@@ -6,19 +6,19 @@
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <link rel="dns-prefetch" href="http://vincentwang.top">
-  <title>Linux 使用npt服务时间同步 | Xi Wang</title>
+  <title>Linux-使用ntp服务时间同步 | Xi Wang</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="description" content="Linux Time Zone列出所有时区 1timedatectl list-timezones 设置硬件时钟和本机一致 1timedatectl set-local-rtc 1 设置时区为上海 1timedatectl set-timezone Asia/Shanghai Real Time Clock(RTC) and System Clock说道设置时间这里还要明确另外一个概念就是在一台计">
 <meta name="keywords" content="linux">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Linux 使用npt服务时间同步">
+<meta property="og:title" content="Linux-使用ntp服务时间同步">
 <meta property="og:url" content="http://vincentwang.top/2018/11/13/Linux-使用ntp服务时间同步/index.html">
 <meta property="og:site_name" content="Xi Wang">
 <meta property="og:description" content="Linux Time Zone列出所有时区 1timedatectl list-timezones 设置硬件时钟和本机一致 1timedatectl set-local-rtc 1 设置时区为上海 1timedatectl set-timezone Asia/Shanghai Real Time Clock(RTC) and System Clock说道设置时间这里还要明确另外一个概念就是在一台计">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2018-11-13T08:11:11.376Z">
+<meta property="og:updated_time" content="2018-11-13T09:00:33.503Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Linux 使用npt服务时间同步">
+<meta name="twitter:title" content="Linux-使用ntp服务时间同步">
 <meta name="twitter:description" content="Linux Time Zone列出所有时区 1timedatectl list-timezones 设置硬件时钟和本机一致 1timedatectl set-local-rtc 1 设置时区为上海 1timedatectl set-timezone Asia/Shanghai Real Time Clock(RTC) and System Clock说道设置时间这里还要明确另外一个概念就是在一台计">
   
     <link rel="alternative" href="/atom.xml" title="Xi Wang" type="application/atom+xml">
@@ -162,13 +162,13 @@
         
   
     <h1 class="article-title" itemprop="name">
-      Linux 使用npt服务时间同步
+      Linux-使用ntp服务时间同步
     </h1>
   
 
         
         <a href="/2018/11/13/Linux-使用ntp服务时间同步/" class="archive-article-date">
-  	<time datetime="2018-11-13T07:48:55.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
+  	<time datetime="2018-11-13T08:59:58.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
       </header>
@@ -209,6 +209,7 @@
 <p>我是在官网里找的🇨🇳的时间服务器</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">server 0.cn.pool.ntp.org</span><br><span class="line">server 1.cn.pool.ntp.org</span><br><span class="line">server 2.cn.pool.ntp.org</span><br><span class="line">server 3.cn.pool.ntp.org</span><br></pre></td></tr></table></figure>
 <h4 id="RHEL7-CentOS7-NTP开机无法启动"><a href="#RHEL7-CentOS7-NTP开机无法启动" class="headerlink" title="RHEL7/CentOS7 NTP开机无法启动"></a>RHEL7/CentOS7 NTP开机无法启动</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"># 查看是否开机启动</span><br><span class="line">[root@node2 ~]# systemctl is-enabled ntpd</span><br><span class="line">enabled</span><br><span class="line"></span><br><span class="line"># 通过查询发现有一个chronyd服务设置为开机自启动，这个服务导致ntp无法开启自启动</span><br><span class="line">[root@node2 ~]# systemctl disable chronyd</span><br></pre></td></tr></table></figure>
+
       
 
       
@@ -312,18 +313,9 @@
   
 <nav id="article-nav">
   
-    <a href="/2018/11/13/Linux-iptables设置只允许特定mac地址、端口访问/" id="article-nav-newer" class="article-nav-link-wrap">
-      <i class="icon-circle-left"></i>
-      <div class="article-nav-title">
-        
-          Linux iptables设置只允许特定mac地址、端口访问
-        
-      </div>
-    </a>
   
-  
-    <a href="/2018/11/13/Ceph-CRUSH算法/" id="article-nav-older" class="article-nav-link-wrap">
-      <div class="article-nav-title">Ceph CRUSH算法</div>
+    <a href="/2018/11/13/Deep-learning-使用云GPU主机配置/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">Deep learning 使用云GPU主机配置</div>
       <i class="icon-circle-right"></i>
     </a>
   
