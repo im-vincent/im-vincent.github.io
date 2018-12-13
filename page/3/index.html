@@ -152,6 +152,333 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-Best-practices-for-writing-Dockerfiles" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/11/13/cjpm8f7vf0001znfydixjnaz1/">Best practices for writing Dockerfiles</a>
+    </h1>
+  
+
+        
+        <a href="/2018/11/13/cjpm8f7vf0001znfydixjnaz1/" class="archive-article-date">
+  	<time datetime="2018-11-13T07:26:32.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Best-practices-for-writing-Dockerfiles"><a href="#Best-practices-for-writing-Dockerfiles" class="headerlink" title="Best practices for writing Dockerfiles"></a>Best practices for writing Dockerfiles</h1><p>Estimated reading time: 20 minutes</p>
+<p>Docker can build images automatically by reading the instructions from a <code>Dockerfile</code>, a text file that contains all the commands, in order, needed to build a given image. <code>Dockerfile</code>s adhere to a specific format and use a specific set of instructions. You can learn the basics on the <a href="https://docs.docker.com/engine/reference/builder/" target="_blank" rel="noopener">Dockerfile Reference</a> page. If you’re new to writing <code>Dockerfile</code>s, you should start there.</p>
+<p>This document covers the best practices and methods recommended by Docker, Inc. and the Docker community for creating easy-to-use, effective<code>Dockerfile</code>s. We strongly suggest you follow these recommendations (in fact, if you’re creating an Official Image, you <em>must</em> adhere to these practices).</p>
+<p>You can see many of these practices and recommendations in action in the <a href="https://github.com/docker-library/buildpack-deps/blob/master/jessie/Dockerfile" target="_blank" rel="noopener">buildpack-deps <code>Dockerfile</code></a>.</p>
+<blockquote>
+<p>Note: for more detailed explanations of any of the Dockerfile commands mentioned here, visit the <a href="https://docs.docker.com/engine/reference/builder/" target="_blank" rel="noopener">Dockerfile Reference</a> page.</p>
+</blockquote>
+<h2 id="General-guidelines-and-recommendations"><a href="#General-guidelines-and-recommendations" class="headerlink" title="General guidelines and recommendations"></a>General guidelines and recommendations</h2><h3 id="Containers-should-be-ephemeral"><a href="#Containers-should-be-ephemeral" class="headerlink" title="Containers should be ephemeral"></a>Containers should be ephemeral</h3><p>The container produced by the image your <code>Dockerfile</code> defines should be as ephemeral as possible. By “ephemeral,” we mean that it can be stopped and destroyed and a new one built and put in place with an absolute minimum of set-up and configuration. You may want to take a look at the <a href="https://12factor.net/processes" target="_blank" rel="noopener">Processes</a> section of the 12 Factor app methodology to get a feel for the motivations of running containers in such a stateless fashion.</p>
+<h3 id="Use-a-dockerignore-file"><a href="#Use-a-dockerignore-file" class="headerlink" title="Use a .dockerignore file"></a>Use a .dockerignore file</h3><p>In most cases, it’s best to put each Dockerfile in an empty directory. Then, add to that directory only the files needed for building the Dockerfile. To increase the build’s performance, you can exclude files and directories by adding a <code>.dockerignore</code> file to that directory as well. This file supports exclusion patterns similar to <code>.gitignore</code> files. For information on creating one, see the <a href="https://docs.docker.com/engine/reference/builder/#dockerignore-file" target="_blank" rel="noopener">.dockerignore file</a>.</p>
+<h3 id="Avoid-installing-unnecessary-packages"><a href="#Avoid-installing-unnecessary-packages" class="headerlink" title="Avoid installing unnecessary packages"></a>Avoid installing unnecessary packages</h3><p>In order to reduce complexity, dependencies, file sizes, and build times, you should avoid installing extra or unnecessary packages just because they might be “nice to have.” For example, you don’t need to include a text editor in a database image.</p>
+<h3 id="Each-container-should-have-only-one-concern"><a href="#Each-container-should-have-only-one-concern" class="headerlink" title="Each container should have only one concern"></a>Each container should have only one concern</h3><p>Decoupling applications into multiple containers makes it much easier to scale horizontally and reuse containers. For instance, a web application stack might consist of three separate containers, each with its own unique image, to manage the web application, database, and an in-memory cache in a decoupled manner.</p>
+<p>You may have heard that there should be “one process per container”. While this mantra has good intentions, it is not necessarily true that there should be only one operating system process per container. In addition to the fact that containers can now be <a href="https://docs.docker.com/engine/reference/run/#/specifying-an-init-process" target="_blank" rel="noopener">spawned with an init process</a>, some programs might spawn additional processes of their own accord. For instance, <a href="http://www.celeryproject.org/" target="_blank" rel="noopener">Celery</a> can spawn multiple worker processes, or <a href="https://httpd.apache.org/" target="_blank" rel="noopener">Apache</a> might create a process per request. While “one process per container” is frequently a good rule of thumb, it is not a hard and fast rule. Use your best judgment to keep containers as clean and modular as possible.</p>
+<p>If containers depend on each other, you can use <a href="https://docs.docker.com/engine/userguide/networking/" target="_blank" rel="noopener">Docker container networks</a> to ensure that these containers can communicate.</p>
+<h3 id="Minimize-the-number-of-layers"><a href="#Minimize-the-number-of-layers" class="headerlink" title="Minimize the number of layers"></a>Minimize the number of layers</h3><p>You need to find the balance between readability (and thus long-term maintainability) of the <code>Dockerfile</code> and minimizing the number of layers it uses. Be strategic and cautious about the number of layers you use.</p>
+<h3 id="Sort-multi-line-arguments"><a href="#Sort-multi-line-arguments" class="headerlink" title="Sort multi-line arguments"></a>Sort multi-line arguments</h3><p>Whenever possible, ease later changes by sorting multi-line arguments alphanumerically. This will help you avoid duplication of packages and make the list much easier to update. This also makes PRs a lot easier to read and review. Adding a space before a backslash (<code>\</code>) helps as well.</p>
+<p>Here’s an example from the <a href="https://github.com/docker-library/buildpack-deps" target="_blank" rel="noopener"><code>buildpack-deps</code> image</a>:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">RUN apt-get update &amp;&amp; apt-get install -y \</span><br><span class="line">  bzr \</span><br><span class="line">  cvs \</span><br><span class="line">  git \</span><br><span class="line">  mercurial \</span><br><span class="line">  subversion</span><br></pre></td></tr></table></figure>
+<h3 id="Build-cache"><a href="#Build-cache" class="headerlink" title="Build cache"></a>Build cache</h3><p>During the process of building an image Docker will step through the instructions in your <code>Dockerfile</code> executing each in the order specified. As each instruction is examined Docker will look for an existing image in its cache that it can reuse, rather than creating a new (duplicate) image. If you do not want to use the cache at all you can use the <code>--no-cache=true</code> option on the <code>docker build</code> command.</p>
+<p>However, if you do let Docker use its cache then it is very important to understand when it will, and will not, find a matching image. The basic rules that Docker will follow are outlined below:</p>
+<ul>
+<li>Starting with a base image that is already in the cache, the next instruction is compared against all child images derived from that base image to see if one of them was built using the exact same instruction. If not, the cache is invalidated.</li>
+<li>In most cases simply comparing the instruction in the <code>Dockerfile</code> with one of the child images is sufficient. However, certain instructions require a little more examination and explanation.</li>
+<li>For the <code>ADD</code> and <code>COPY</code> instructions, the contents of the file(s) in the image are examined and a checksum is calculated for each file. The last-modified and last-accessed times of the file(s) are not considered in these checksums. During the cache lookup, the checksum is compared against the checksum in the existing images. If anything has changed in the file(s), such as the contents and metadata, then the cache is invalidated.</li>
+<li>Aside from the <code>ADD</code> and <code>COPY</code> commands, cache checking will not look at the files in the container to determine a cache match. For example, when processing a <code>RUN apt-get -y update</code> command the files updated in the container will not be examined to determine if a cache hit exists. In that case just the command string itself will be used to find a match.</li>
+</ul>
+<p>Once the cache is invalidated, all subsequent <code>Dockerfile</code> commands will generate new images and the cache will not be used.</p>
+<h2 id="The-Dockerfile-instructions"><a href="#The-Dockerfile-instructions" class="headerlink" title="The Dockerfile instructions"></a>The Dockerfile instructions</h2><p>Below you’ll find recommendations for the best way to write the various instructions available for use in a <code>Dockerfile</code>.</p>
+<h3 id="FROM"><a href="#FROM" class="headerlink" title="FROM"></a>FROM</h3><p><a href="https://docs.docker.com/engine/reference/builder/#from" target="_blank" rel="noopener">Dockerfile reference for the FROM instruction</a></p>
+<p>Whenever possible, use current Official Repositories as the basis for your image. We recommend the <a href="https://hub.docker.com/_/debian/" target="_blank" rel="noopener">Debian image</a>since it’s very tightly controlled and kept minimal (currently under 150 mb), while still being a full distribution.</p>
+<h3 id="LABEL"><a href="#LABEL" class="headerlink" title="LABEL"></a>LABEL</h3><p><a href="https://docs.docker.com/engine/userguide/labels-custom-metadata/" target="_blank" rel="noopener">Understanding object labels</a></p>
+<p>You can add labels to your image to help organize images by project, record licensing information, to aid in automation, or for other reasons. For each label, add a line beginning with <code>LABEL</code> and with one or more key-value pairs. The following examples show the different acceptable formats. Explanatory comments are included inline.</p>
+<blockquote>
+<p><strong>Note</strong>: If your string contains spaces, it must be quoted <strong>or</strong> the spaces must be escaped. If your string contains inner quote characters (<code>&quot;</code>), escape them as well.</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"># Set one or more individual labels</span><br><span class="line">LABEL com.example.version=&quot;0.0.1-beta&quot;</span><br><span class="line">LABEL vendor=&quot;ACME Incorporated&quot;</span><br><span class="line">LABEL com.example.release-date=&quot;2015-02-12&quot;</span><br><span class="line">LABEL com.example.version.is-production=&quot;&quot;</span><br><span class="line"></span><br><span class="line"># Set multiple labels on one line</span><br><span class="line">LABEL com.example.version=&quot;0.0.1-beta&quot; com.example.release-date=&quot;2015-02-12&quot;</span><br><span class="line"></span><br><span class="line"># Set multiple labels at once, using line-continuation characters to break long lines</span><br><span class="line">LABEL vendor=ACME\ Incorporated \</span><br><span class="line">      com.example.is-beta= \</span><br><span class="line">      com.example.is-production=&quot;&quot; \</span><br><span class="line">      com.example.version=&quot;0.0.1-beta&quot; \</span><br><span class="line">      com.example.release-date=&quot;2015-02-12&quot;</span><br></pre></td></tr></table></figure>
+<p>See <a href="https://docs.docker.com/engine/userguide/labels-custom-metadata/" target="_blank" rel="noopener">Understanding object labels</a> for guidelines about acceptable label keys and values. For information about querying labels, refer to the items related to filtering in <a href="https://docs.docker.com/engine/userguide/labels-custom-metadata/#managing-labels-on-objects" target="_blank" rel="noopener">Managing labels on objects</a>.</p>
+<h3 id="RUN"><a href="#RUN" class="headerlink" title="RUN"></a>RUN</h3><p><a href="https://docs.docker.com/engine/reference/builder/#run" target="_blank" rel="noopener">Dockerfile reference for the RUN instruction</a></p>
+<p>As always, to make your <code>Dockerfile</code> more readable, understandable, and maintainable, split long or complex <code>RUN</code>statements on multiple lines separated with backslashes.</p>
+<h4 id="apt-get"><a href="#apt-get" class="headerlink" title="apt-get"></a>apt-get</h4><p>Probably the most common use-case for <code>RUN</code> is an application of <code>apt-get</code>. The <code>RUN apt-get</code> command, because it installs packages, has several gotchas to look out for.</p>
+<p>You should avoid <code>RUN apt-get upgrade</code> or <code>dist-upgrade</code>, as many of the “essential” packages from the base images won’t upgrade inside an unprivileged container. If a package contained in the base image is out-of-date, you should contact its maintainers. If you know there’s a particular package, <code>foo</code>, that needs to be updated, use <code>apt-get install -y foo</code> to update automatically.</p>
+<p>Always combine <code>RUN apt-get update</code> with <code>apt-get install</code> in the same <code>RUN</code> statement, for example:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">RUN apt-get update &amp;&amp; apt-get install -y \</span><br><span class="line">    package-bar \</span><br><span class="line">    package-baz \</span><br><span class="line">    package-foo</span><br></pre></td></tr></table></figure>
+<p>Using <code>apt-get update</code> alone in a <code>RUN</code> statement causes caching issues and subsequent <code>apt-get install</code>instructions fail. For example, say you have a Dockerfile:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">FROM ubuntu:14.04</span><br><span class="line">RUN apt-get update</span><br><span class="line">RUN apt-get install -y curl</span><br></pre></td></tr></table></figure>
+<p>After building the image, all layers are in the Docker cache. Suppose you later modify <code>apt-get install</code> by adding extra package:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">FROM ubuntu:14.04</span><br><span class="line">RUN apt-get update</span><br><span class="line">RUN apt-get install -y curl nginx</span><br></pre></td></tr></table></figure>
+<p>Docker sees the initial and modified instructions as identical and reuses the cache from previous steps. As a result the <code>apt-get update</code> is <em>NOT</em>executed because the build uses the cached version. Because the <code>apt-get update</code> is not run, your build can potentially get an outdated version of the <code>curl</code> and <code>nginx</code> packages.</p>
+<p>Using <code>RUN apt-get update &amp;&amp; apt-get install -y</code> ensures your Dockerfile installs the latest package versions with no further coding or manual intervention. This technique is known as “cache busting”. You can also achieve cache-busting by specifying a package version. This is known as version pinning, for example:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">RUN apt-get update &amp;&amp; apt-get install -y \</span><br><span class="line">    package-bar \</span><br><span class="line">    package-baz \</span><br><span class="line">    package-foo=1.3.*</span><br></pre></td></tr></table></figure>
+<p>Version pinning forces the build to retrieve a particular version regardless of what’s in the cache. This technique can also reduce failures due to unanticipated changes in required packages.</p>
+<p>Below is a well-formed <code>RUN</code> instruction that demonstrates all the <code>apt-get</code> recommendations.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">RUN apt-get update &amp;&amp; apt-get install -y \</span><br><span class="line">    aufs-tools \</span><br><span class="line">    automake \</span><br><span class="line">    build-essential \</span><br><span class="line">    curl \</span><br><span class="line">    dpkg-sig \</span><br><span class="line">    libcap-dev \</span><br><span class="line">    libsqlite3-dev \</span><br><span class="line">    mercurial \</span><br><span class="line">    reprepro \</span><br><span class="line">    ruby1.9.1 \</span><br><span class="line">    ruby1.9.1-dev \</span><br><span class="line">    s3cmd=1.1.* \</span><br><span class="line"> &amp;&amp; rm -rf /var/lib/apt/lists/*</span><br></pre></td></tr></table></figure>
+<p>The <code>s3cmd</code> instructions specifies a version <code>1.1.0*</code>. If the image previously used an older version, specifying the new one causes a cache bust of <code>apt-get update</code> and ensure the installation of the new version. Listing packages on each line can also prevent mistakes in package duplication.</p>
+<p>In addition, cleaning up the apt cache and removing <code>/var/lib/apt/lists</code> helps keep the image size down. Since the <code>RUN</code> statement starts with<code>apt-get update</code>, the package cache will always be refreshed prior to <code>apt-get install</code>.</p>
+<blockquote>
+<p><strong>Note</strong>: The official Debian and Ubuntu images <a href="https://github.com/docker/docker/blob/03e2923e42446dbb830c654d0eec323a0b4ef02a/contrib/mkimage/debootstrap#L82-L105" target="_blank" rel="noopener">automatically run <code>apt-get clean</code></a>, so explicit invocation is not required.</p>
+</blockquote>
+<h4 id="Using-pipes"><a href="#Using-pipes" class="headerlink" title="Using pipes"></a>Using pipes</h4><p>Some <code>RUN</code> commands depend on the ability to pipe the output of one command into another, using the pipe character (<code>|</code>), as in the following example:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RUN wget -O - https://some.site | wc -l &gt; /number</span><br></pre></td></tr></table></figure>
+<p>Docker executes these commands using the <code>/bin/sh -c</code> interpreter, which only evaluates the exit code of the last operation in the pipe to determine success. In the example above this build step succeeds and produces a new image so long as the <code>wc -l</code> command succeeds, even if the <code>wget</code> command fails.</p>
+<p>If you want the command to fail due to an error at any stage in the pipe, prepend <code>set -o pipefail &amp;&amp;</code> to ensure that an unexpected error prevents the build from inadvertently succeeding. For example:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RUN set -o pipefail &amp;&amp; wget -O - https://some.site | wc -l &gt; /number</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p><strong>Note</strong>: Not all shells support the <code>-o pipefail</code> option. In such cases (such as the <code>dash</code> shell, which is the default shell on Debian-based images), consider using the <em>exec</em> form of <code>RUN</code> to explicitly choose a shell that does support the <code>pipefail</code> option. For example:</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RUN [&quot;/bin/bash&quot;, &quot;-c&quot;, &quot;set -o pipefail &amp;&amp; wget -O - https://some.site | wc -l &gt; /number&quot;]</span><br></pre></td></tr></table></figure>
+<h3 id="CMD"><a href="#CMD" class="headerlink" title="CMD"></a>CMD</h3><p><a href="https://docs.docker.com/engine/reference/builder/#cmd" target="_blank" rel="noopener">Dockerfile reference for the CMD instruction</a></p>
+<p>The <code>CMD</code> instruction should be used to run the software contained by your image, along with any arguments. <code>CMD</code>should almost always be used in the form of <code>CMD [“executable”, “param1”, “param2”…]</code>. Thus, if the image is for a service, such as Apache and Rails, you would run something like <code>CMD [&quot;apache2&quot;,&quot;-DFOREGROUND&quot;]</code>. Indeed, this form of the instruction is recommended for any service-based image.</p>
+<p>In most other cases, <code>CMD</code> should be given an interactive shell, such as bash, python and perl. For example, <code>CMD [&quot;perl&quot;, &quot;-de0&quot;]</code>, <code>CMD [&quot;python&quot;]</code>, or <code>CMD [“php”, “-a”]</code>. Using this form means that when you execute something like <code>docker run -it python</code>, you’ll get dropped into a usable shell, ready to go. <code>CMD</code> should rarely be used in the manner of <code>CMD [“param”, “param”]</code> in conjunction with <a href="https://docs.docker.com/engine/reference/builder/#entrypoint" target="_blank" rel="noopener"><code>ENTRYPOINT</code></a>, unless you and your expected users are already quite familiar with how <code>ENTRYPOINT</code> works.</p>
+<h3 id="EXPOSE"><a href="#EXPOSE" class="headerlink" title="EXPOSE"></a>EXPOSE</h3><p><a href="https://docs.docker.com/engine/reference/builder/#expose" target="_blank" rel="noopener">Dockerfile reference for the EXPOSE instruction</a></p>
+<p>The <code>EXPOSE</code> instruction indicates the ports on which a container will listen for connections. Consequently, you should use the common, traditional port for your application. For example, an image containing the Apache web server would use <code>EXPOSE 80</code>, while an image containing MongoDB would use <code>EXPOSE 27017</code> and so on.</p>
+<p>For external access, your users can execute <code>docker run</code> with a flag indicating how to map the specified port to the port of their choice. For container linking, Docker provides environment variables for the path from the recipient container back to the source (ie, <code>MYSQL_PORT_3306_TCP</code>).</p>
+<h3 id="ENV"><a href="#ENV" class="headerlink" title="ENV"></a>ENV</h3><p><a href="https://docs.docker.com/engine/reference/builder/#env" target="_blank" rel="noopener">Dockerfile reference for the ENV instruction</a></p>
+<p>In order to make new software easier to run, you can use <code>ENV</code> to update the <code>PATH</code> environment variable for the software your container installs. For example, <code>ENV PATH /usr/local/nginx/bin:$PATH</code> will ensure that <code>CMD [“nginx”]</code> just works.</p>
+<p>The <code>ENV</code> instruction is also useful for providing required environment variables specific to services you wish to containerize, such as Postgres’s<code>PGDATA</code>.</p>
+<p>Lastly, <code>ENV</code> can also be used to set commonly used version numbers so that version bumps are easier to maintain, as seen in the following example:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">ENV PG_MAJOR 9.3</span><br><span class="line">ENV PG_VERSION 9.3.4</span><br><span class="line">RUN curl -SL http://example.com/postgres-$PG_VERSION.tar.xz | tar -xJC /usr/src/postgress &amp;&amp; …</span><br><span class="line">ENV PATH /usr/local/postgres-$PG_MAJOR/bin:$PATH</span><br></pre></td></tr></table></figure>
+<p>Similar to having constant variables in a program (as opposed to hard-coding values), this approach lets you change a single <code>ENV</code> instruction to auto-magically bump the version of the software in your container.</p>
+<h3 id="ADD-or-COPY"><a href="#ADD-or-COPY" class="headerlink" title="ADD or COPY"></a>ADD or COPY</h3><p><a href="https://docs.docker.com/engine/reference/builder/#add" target="_blank" rel="noopener">Dockerfile reference for the ADD instruction</a><br><a href="https://docs.docker.com/engine/reference/builder/#copy" target="_blank" rel="noopener">Dockerfile reference for the COPY instruction</a></p>
+<p>Although <code>ADD</code> and <code>COPY</code> are functionally similar, generally speaking, <code>COPY</code> is preferred. That’s because it’s more transparent than <code>ADD</code>. <code>COPY</code> only supports the basic copying of local files into the container, while <code>ADD</code> has some features (like local-only tar extraction and remote URL support) that are not immediately obvious. Consequently, the best use for <code>ADD</code> is local tar file auto-extraction into the image, as in <code>ADD rootfs.tar.xz /</code>.</p>
+<p>If you have multiple <code>Dockerfile</code> steps that use different files from your context, <code>COPY</code> them individually, rather than all at once. This will ensure that each step’s build cache is only invalidated (forcing the step to be re-run) if the specifically required files change.</p>
+<p>For example:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">COPY requirements.txt /tmp/</span><br><span class="line">RUN pip install --requirement /tmp/requirements.txt</span><br><span class="line">COPY . /tmp/</span><br></pre></td></tr></table></figure>
+<p>Results in fewer cache invalidations for the <code>RUN</code> step, than if you put the <code>COPY . /tmp/</code> before it.</p>
+<p>Because image size matters, using <code>ADD</code> to fetch packages from remote URLs is strongly discouraged; you should use <code>curl</code> or <code>wget</code> instead. That way you can delete the files you no longer need after they’ve been extracted and you won’t have to add another layer in your image. For example, you should avoid doing things like:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ADD http://example.com/big.tar.xz /usr/src/things/</span><br><span class="line">RUN tar -xJf /usr/src/things/big.tar.xz -C /usr/src/things</span><br><span class="line">RUN make -C /usr/src/things all</span><br></pre></td></tr></table></figure>
+<p>And instead, do something like:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">RUN mkdir -p /usr/src/things \</span><br><span class="line">    &amp;&amp; curl -SL http://example.com/big.tar.xz \</span><br><span class="line">    | tar -xJC /usr/src/things \</span><br><span class="line">    &amp;&amp; make -C /usr/src/things all</span><br></pre></td></tr></table></figure>
+<p>For other items (files, directories) that do not require <code>ADD</code>’s tar auto-extraction capability, you should always use <code>COPY</code>.</p>
+<h3 id="ENTRYPOINT"><a href="#ENTRYPOINT" class="headerlink" title="ENTRYPOINT"></a>ENTRYPOINT</h3><p><a href="https://docs.docker.com/engine/reference/builder/#entrypoint" target="_blank" rel="noopener">Dockerfile reference for the ENTRYPOINT instruction</a></p>
+<p>The best use for <code>ENTRYPOINT</code> is to set the image’s main command, allowing that image to be run as though it was that command (and then use <code>CMD</code>as the default flags).</p>
+<p>Let’s start with an example of an image for the command line tool <code>s3cmd</code>:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ENTRYPOINT [&quot;s3cmd&quot;]</span><br><span class="line">CMD [&quot;--help&quot;]</span><br></pre></td></tr></table></figure>
+<p>Now the image can be run like this to show the command’s help:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ docker run s3cmd</span><br></pre></td></tr></table></figure>
+<p>Or using the right parameters to execute a command:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ docker run s3cmd ls s3://mybucket</span><br></pre></td></tr></table></figure>
+<p>This is useful because the image name can double as a reference to the binary as shown in the command above.</p>
+<p>The <code>ENTRYPOINT</code> instruction can also be used in combination with a helper script, allowing it to function in a similar way to the command above, even when starting the tool may require more than one step.</p>
+<p>For example, the <a href="https://hub.docker.com/_/postgres/" target="_blank" rel="noopener">Postgres Official Image</a> uses the following script as its <code>ENTRYPOINT</code>:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">#!/bin/bash</span><br><span class="line">set -e</span><br><span class="line"></span><br><span class="line">if [ &quot;$1&quot; = &apos;postgres&apos; ]; then</span><br><span class="line">    chown -R postgres &quot;$PGDATA&quot;</span><br><span class="line"></span><br><span class="line">    if [ -z &quot;$(ls -A &quot;$PGDATA&quot;)&quot; ]; then</span><br><span class="line">        gosu postgres initdb</span><br><span class="line">    fi</span><br><span class="line"></span><br><span class="line">    exec gosu postgres &quot;$@&quot;</span><br><span class="line">fi</span><br><span class="line"></span><br><span class="line">exec &quot;$@&quot;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p><strong>Note</strong>: This script uses <a href="http://wiki.bash-hackers.org/commands/builtin/exec" target="_blank" rel="noopener">the <code>exec</code> Bash command</a> so that the final running application becomes the container’s PID 1. This allows the application to receive any Unix signals sent to the container. See the <a href="https://docs.docker.com/engine/reference/builder/#entrypoint" target="_blank" rel="noopener"><code>ENTRYPOINT</code></a> help for more details.</p>
+</blockquote>
+<p>The helper script is copied into the container and run via <code>ENTRYPOINT</code> on container start:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">COPY ./docker-entrypoint.sh /</span><br><span class="line">ENTRYPOINT [&quot;/docker-entrypoint.sh&quot;]</span><br></pre></td></tr></table></figure>
+<p>This script allows the user to interact with Postgres in several ways.</p>
+<p>It can simply start Postgres:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ docker run postgres</span><br></pre></td></tr></table></figure>
+<p>Or, it can be used to run Postgres and pass parameters to the server:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ docker run postgres postgres --help</span><br></pre></td></tr></table></figure>
+<p>Lastly, it could also be used to start a totally different tool, such as Bash:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ docker run --rm -it postgres bash</span><br></pre></td></tr></table></figure>
+<h3 id="VOLUME"><a href="#VOLUME" class="headerlink" title="VOLUME"></a>VOLUME</h3><p><a href="https://docs.docker.com/engine/reference/builder/#volume" target="_blank" rel="noopener">Dockerfile reference for the VOLUME instruction</a></p>
+<p>The <code>VOLUME</code> instruction should be used to expose any database storage area, configuration storage, or files/folders created by your docker container. You are strongly encouraged to use <code>VOLUME</code> for any mutable and/or user-serviceable parts of your image.</p>
+<h3 id="USER"><a href="#USER" class="headerlink" title="USER"></a>USER</h3><p><a href="https://docs.docker.com/engine/reference/builder/#user" target="_blank" rel="noopener">Dockerfile reference for the USER instruction</a></p>
+<p>If a service can run without privileges, use <code>USER</code> to change to a non-root user. Start by creating the user and group in the <code>Dockerfile</code> with something like <code>RUN groupadd -r postgres &amp;&amp; useradd -r -g postgres postgres</code>.</p>
+<blockquote>
+<p><strong>Note:</strong> Users and groups in an image get a non-deterministic UID/GID in that the “next” UID/GID gets assigned regardless of image rebuilds. So, if it’s critical, you should assign an explicit UID/GID.</p>
+</blockquote>
+<p>You should avoid installing or using <code>sudo</code> since it has unpredictable TTY and signal-forwarding behavior that can cause more problems than it solves. If you absolutely need functionality similar to <code>sudo</code> (e.g., initializing the daemon as root but running it as non-root), you may be able to use <a href="https://github.com/tianon/gosu" target="_blank" rel="noopener">“gosu”</a>.</p>
+<p>Lastly, to reduce layers and complexity, avoid switching <code>USER</code> back and forth frequently.</p>
+<h3 id="WORKDIR"><a href="#WORKDIR" class="headerlink" title="WORKDIR"></a>WORKDIR</h3><p><a href="https://docs.docker.com/engine/reference/builder/#workdir" target="_blank" rel="noopener">Dockerfile reference for the WORKDIR instruction</a></p>
+<p>For clarity and reliability, you should always use absolute paths for your <code>WORKDIR</code>. Also, you should use <code>WORKDIR</code>instead of proliferating instructions like <code>RUN cd … &amp;&amp; do-something</code>, which are hard to read, troubleshoot, and maintain.</p>
+<h3 id="ONBUILD"><a href="#ONBUILD" class="headerlink" title="ONBUILD"></a>ONBUILD</h3><p><a href="https://docs.docker.com/engine/reference/builder/#onbuild" target="_blank" rel="noopener">Dockerfile reference for the ONBUILD instruction</a></p>
+<p>An <code>ONBUILD</code> command executes after the current <code>Dockerfile</code> build completes. <code>ONBUILD</code> executes in any child image derived <code>FROM</code> the current image. Think of the <code>ONBUILD</code> command as an instruction the parent <code>Dockerfile</code>gives to the child <code>Dockerfile</code>.</p>
+<p>A Docker build executes <code>ONBUILD</code> commands before any command in a child <code>Dockerfile</code>.</p>
+<p><code>ONBUILD</code> is useful for images that are going to be built <code>FROM</code> a given image. For example, you would use <code>ONBUILD</code>for a language stack image that builds arbitrary user software written in that language within the <code>Dockerfile</code>, as you can see in <a href="https://github.com/docker-library/ruby/blob/master/2.1/onbuild/Dockerfile" target="_blank" rel="noopener">Ruby’s <code>ONBUILD</code> variants</a>.</p>
+<p>Images built from <code>ONBUILD</code> should get a separate tag, for example: <code>ruby:1.9-onbuild</code> or <code>ruby:2.0-onbuild</code>.</p>
+<p>Be careful when putting <code>ADD</code> or <code>COPY</code> in <code>ONBUILD</code>. The “onbuild” image will fail catastrophically if the new build’s context is missing the resource being added. Adding a separate tag, as recommended above, will help mitigate this by allowing the <code>Dockerfile</code> author to make a choice.</p>
+<h2 id="Examples-for-Official-Repositories"><a href="#Examples-for-Official-Repositories" class="headerlink" title="Examples for Official Repositories"></a>Examples for Official Repositories</h2><p>These Official Repositories have exemplary <code>Dockerfile</code>s:</p>
+<ul>
+<li><a href="https://hub.docker.com/_/golang/" target="_blank" rel="noopener">Go</a></li>
+<li><a href="https://hub.docker.com/_/perl/" target="_blank" rel="noopener">Perl</a></li>
+<li><a href="https://hub.docker.com/_/hylang/" target="_blank" rel="noopener">Hy</a></li>
+<li><a href="https://hub.docker.com/_/rails" target="_blank" rel="noopener">Rails</a></li>
+</ul>
+<h2 id="Additional-resources"><a href="#Additional-resources" class="headerlink" title="Additional resources:"></a>Additional resources:</h2><ul>
+<li><a href="https://docs.docker.com/engine/reference/builder/" target="_blank" rel="noopener">Dockerfile Reference</a></li>
+<li><a href="https://docs.docker.com/engine/userguide/eng-image/baseimages/" target="_blank" rel="noopener">More about Base Images</a></li>
+<li><a href="https://docs.docker.com/docker-hub/builds/" target="_blank" rel="noopener">More about Automated Builds</a></li>
+<li><a href="https://docs.docker.com/docker-hub/official_repos/" target="_blank" rel="noopener">Guidelines for Creating Official Repositories</a></li>
+</ul>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">docker</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2018/11/13/cjpm8f7vf0001znfydixjnaz1/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-Kubernetes使用Ceph-rbd持久化数据" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/11/13/cjpm8f7vt000aznfy1amnxxmw/">Kubernetes使用Ceph rbd持久化数据</a>
+    </h1>
+  
+
+        
+        <a href="/2018/11/13/cjpm8f7vt000aznfy1amnxxmw/" class="archive-article-date">
+  	<time datetime="2018-11-13T07:24:50.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在k8s里pod可以在任意节点上漂移，这样会引出一个问题。如果是需要持久化的数据怎么办？pod漂移了，但是他还是要挂载原来volume。</p>
+<p>kubernetes对应的几类持久卷</p>
+<ul>
+<li>volume</li>
+<li><a href="https://kubernetes.io/docs/user-guide/persistent-volumes/#persistent-volumes" target="_blank" rel="noopener">Persistent Volumes</a> 、<a href="https://kubernetes.io/docs/user-guide/persistent-volumes/#persistentvolumeclaims" target="_blank" rel="noopener">PersistentVolumeClaims</a></li>
+<li><a href="https://kubernetes.io/docs/user-guide/persistent-volumes/#storageclasses" target="_blank" rel="noopener">StorageClasses</a></li>
+</ul>
+<h3 id="使用volume作为持久卷"><a href="#使用volume作为持久卷" class="headerlink" title="使用volume作为持久卷"></a>使用volume作为持久卷</h3><p>参考文档<a href="https://github.com/kubernetes/kubernetes/tree/master/examples/volumes/rbd" target="_blank" rel="noopener">https://github.com/kubernetes/kubernetes/tree/master/examples/volumes/rbd</a></p>
+<p>kubernetes node节点需要安装Ceph</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum -y install ceph-common</span><br></pre></td></tr></table></figure>
+<p>复制ceph配置文件，以及key文件</p>
+<p>这个可以在admin.ceph.local节点上使用ceph-deploy来配置</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">ceph-deploy admin root@node1.k8s.local</span><br><span class="line">ceph-deploy admin root@node2.k8s.local</span><br><span class="line"></span><br><span class="line"># 因为我有两个数据节点，所以我就都复制了.</span><br></pre></td></tr></table></figure>
+<p>建立ceph secret</p>
+<p>如果要使用ceph就要有账号等相关信息，在k8s里这些信息都是存放到secret里</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"># 密码转换成base64</span><br><span class="line">[root@node1 ceph]# grep key /etc/ceph/ceph.client.admin.keyring |awk &apos;&#123;printf &quot;%s&quot;, $NF&#125;&apos;|base64         </span><br><span class="line">QVFCc044SllNZDhDS0JBQVJJdlYvamtNWGFZMHowOHVyQ2JPeFE9PQ==</span><br><span class="line"></span><br><span class="line"># 替换模板文件</span><br><span class="line">[root@master ceph]# cat ceph-secret.yaml </span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Secret</span><br><span class="line">metadata:</span><br><span class="line">  name: ceph-secret</span><br><span class="line">type: &quot;kubernetes.io/rbd&quot;  </span><br><span class="line">data:</span><br><span class="line">  key: QVFCc044SllNZDhDS0JBQVJJdlYvamtNWGFZMHowOHVyQ2JPeFE9PQ==</span><br><span class="line"></span><br><span class="line"># 建立secret</span><br><span class="line">[root@master ceph]# kubectl create -f ceph-secret.yaml </span><br><span class="line">secret &quot;ceph-secret&quot; created</span><br></pre></td></tr></table></figure>
+<p>建立ceph rbd images</p>
+<p>默认会建立在rbd pool下面。建立好了以后，在那个节点上都可以看到</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">[root@node1 ceph]# hostname</span><br><span class="line">node1.k8s.local</span><br><span class="line"></span><br><span class="line">[root@node1 ceph]# rbd create foo --size 4096</span><br><span class="line">[root@node1 ceph]# rbd info rbd/foo</span><br><span class="line">rbd image &apos;foo&apos;:</span><br><span class="line">        size 4096 MB in 1024 objects</span><br><span class="line">        order 22 (4096 kB objects)</span><br><span class="line">        block_name_prefix: rb.0.10a5.238e1f29</span><br><span class="line">        format: 1</span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line">[root@node2 ~]# hostname</span><br><span class="line">node2.k8s.local</span><br><span class="line">[root@node2 ~]# rbd info rbd/foo</span><br><span class="line">rbd image &apos;foo&apos;:</span><br><span class="line">        size 4096 MB in 1024 objects</span><br><span class="line">        order 22 (4096 kB objects)</span><br><span class="line">        block_name_prefix: rb.0.10a5.238e1f29</span><br><span class="line">        format: 1</span><br><span class="line"># 在那个节点上都可以看的到</span><br></pre></td></tr></table></figure>
+<p>建立po使用volume</p>
+<p>修改模板，我只用了一个mon，所以就写了一个</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line">[root@master ceph]# cat rbd.json </span><br><span class="line">&#123;</span><br><span class="line">    &quot;apiVersion&quot;: &quot;v1&quot;,</span><br><span class="line">    &quot;kind&quot;: &quot;Pod&quot;,</span><br><span class="line">    &quot;metadata&quot;: &#123;</span><br><span class="line">        &quot;name&quot;: &quot;rbd&quot;</span><br><span class="line">    &#125;,</span><br><span class="line">    &quot;spec&quot;: &#123;</span><br><span class="line">        &quot;containers&quot;: [</span><br><span class="line">            &#123;</span><br><span class="line">                &quot;name&quot;: &quot;rbd-rw&quot;,</span><br><span class="line">                &quot;image&quot;: &quot;kubernetes/pause&quot;,</span><br><span class="line">                &quot;volumeMounts&quot;: [</span><br><span class="line">                    &#123;</span><br><span class="line">                        &quot;mountPath&quot;: &quot;/mnt/rbd&quot;,</span><br><span class="line">                        &quot;name&quot;: &quot;rbdpd&quot;</span><br><span class="line">                    &#125;</span><br><span class="line">                ]</span><br><span class="line">            &#125;</span><br><span class="line">        ],</span><br><span class="line">        &quot;volumes&quot;: [</span><br><span class="line">            &#123;</span><br><span class="line">                &quot;name&quot;: &quot;rbdpd&quot;,</span><br><span class="line">                &quot;rbd&quot;: &#123;</span><br><span class="line">                    &quot;monitors&quot;: [</span><br><span class="line">                                &quot;10.117.130.146:6789&quot;</span><br><span class="line">                                 ],</span><br><span class="line">                    &quot;pool&quot;: &quot;rbd&quot;,</span><br><span class="line">                    &quot;image&quot;: &quot;foo&quot;,</span><br><span class="line">                    &quot;user&quot;: &quot;admin&quot;,</span><br><span class="line">                    &quot;keyring&quot;: &quot;/etc/ceph/ceph.client.admin.keyring&quot;,</span><br><span class="line">                    &quot;fsType&quot;: &quot;ext4&quot;,</span><br><span class="line">                    &quot;readOnly&quot;: true</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        ]</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">[root@master ceph]# hostname</span><br><span class="line">master.k8s.local</span><br><span class="line"></span><br><span class="line">[root@master ceph]# kubectl create -f rbd.json </span><br><span class="line">pod &quot;rbd&quot; created</span><br><span class="line">[root@master ceph]# kubectl get po </span><br><span class="line">NAME      READY     STATUS    RESTARTS   AGE</span><br><span class="line">rbd       1/1       Running   0          15s</span><br><span class="line">[root@node1 ceph]# hostname</span><br><span class="line">node1.k8s.local</span><br><span class="line"></span><br><span class="line">[root@node1 ceph]# mount |grep kub</span><br><span class="line">/dev/rbd0 on /var/lib/kubelet/pods/0d1910f3-07ba-11e7-81ce-000c29e48abf/volumes/kubernetes.io~rbd/rbdpd type ext4 (ro,relatime,seclabel,stripe=1024,data=ordered)</span><br></pre></td></tr></table></figure>
+<h3 id="使用-Persistent-Volume、Persistent-Volume-Claim作为持久卷"><a href="#使用-Persistent-Volume、Persistent-Volume-Claim作为持久卷" class="headerlink" title="使用 Persistent Volume、Persistent Volume Claim作为持久卷"></a>使用 Persistent Volume、Persistent Volume Claim作为持久卷</h3><p>参考文档 <a href="http://tonybai.com/2016/11/07/integrate-kubernetes-with-ceph-rbd/?utm_source=tuicool&amp;utm_medium=referral" target="_blank" rel="noopener">http://tonybai.com/2016/11/07/integrate-kubernetes-with-ceph-rbd/?utm_source=tuicool&amp;utm_medium=referral</a></p>
+<p>k8s volume还不能完全满足实际生产过程对持久化存储的需求，因为k8s volume的lifetime和pod的生命周期相同，一旦pod被delete，那么volume中的数据就不复存在了。于是k8s又推出了Persistent Volume(PV)和Persistent Volume Claim(PVC)组合，故名思意：即便挂载其的pod被delete了，PV依旧存在，PV上的数据依旧存在。</p>
+<p>创建disk rbd</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[root@node1 ceph]# rbd create ceph-image --size 1024</span><br><span class="line">[root@node1 ceph]# rbd info ceph-image</span><br><span class="line">rbd image &apos;ceph-image&apos;:</span><br><span class="line">        size 1024 MB in 256 objects</span><br><span class="line">        order 22 (4096 kB objects)</span><br><span class="line">        block_name_prefix: rb.0.10ad.2ae8944a</span><br><span class="line">        format: 1</span><br></pre></td></tr></table></figure>
+<p>创建pv,使用之前的ceph-secret</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">[root@master ceph]# cat ceph-pv.yaml </span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: PersistentVolume</span><br><span class="line">metadata:</span><br><span class="line">  name: ceph-pv</span><br><span class="line">spec:</span><br><span class="line">  capacity:</span><br><span class="line">    storage: 1Gi</span><br><span class="line">  accessModes:</span><br><span class="line">    - ReadWriteOnce</span><br><span class="line">  rbd:</span><br><span class="line">    monitors:</span><br><span class="line">      - 10.117.130.146:6789</span><br><span class="line">    pool: rbd</span><br><span class="line">    image: ceph-image</span><br><span class="line">    user: admin</span><br><span class="line">    secretRef:</span><br><span class="line">      name: ceph-secret</span><br><span class="line">    fsType: ext4</span><br><span class="line">    readOnly: false</span><br><span class="line">  persistentVolumeReclaimPolicy: Recycle</span><br><span class="line">  </span><br><span class="line">[root@master ceph]# kubectl create -f ceph-pv.yaml </span><br><span class="line">persistentvolume &quot;ceph-pv&quot; created</span><br><span class="line"></span><br><span class="line">[root@master ceph]# kubectl get pv</span><br><span class="line">NAME      CAPACITY   ACCESSMODES   RECLAIMPOLICY   STATUS      CLAIM     REASON    AGE</span><br><span class="line">ceph-pv   1Gi        RWO           Recycle         Available                       21s</span><br></pre></td></tr></table></figure>
+<p>创建pvc</p>
+<p>pvc是Pod对Pv的请求，将请求做成一种资源，便于管理以及pod复用</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">[root@master ceph]# cat ceph-pvc.yaml </span><br><span class="line">kind: PersistentVolumeClaim</span><br><span class="line">apiVersion: v1</span><br><span class="line">metadata:</span><br><span class="line">  name: ceph-claim</span><br><span class="line">spec:</span><br><span class="line">  accessModes:</span><br><span class="line">    - ReadWriteOnce</span><br><span class="line">  resources:</span><br><span class="line">    requests:</span><br><span class="line">      storage: 1Gi</span><br><span class="line">      </span><br><span class="line">[root@master ceph]# kubectl create -f ceph-pvc.yaml </span><br><span class="line">persistentvolumeclaim &quot;ceph-claim&quot; created</span><br><span class="line"></span><br><span class="line">[root@master ceph]# kubectl get pvc </span><br><span class="line">NAME         STATUS    VOLUME    CAPACITY   ACCESSMODES   AGE</span><br><span class="line">ceph-claim   Bound     ceph-pv   1Gi        RWO           19s</span><br></pre></td></tr></table></figure>
+<p>创建deployment使用pvc</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">[root@master ceph]# cat ceph-deployment.yaml </span><br><span class="line">apiVersion: extensions/v1beta1</span><br><span class="line">kind: Deployment</span><br><span class="line">metadata:</span><br><span class="line">  name: ceph-deployment</span><br><span class="line">spec:</span><br><span class="line">  replicas: 1</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        app: ceph-busybox</span><br><span class="line">    spec:</span><br><span class="line">      containers:</span><br><span class="line">      - name: busybox</span><br><span class="line">        image: busybox</span><br><span class="line">        command: [&quot;sleep&quot;, &quot;600000&quot;]</span><br><span class="line">        volumeMounts:</span><br><span class="line">        - name: ceph-vol1</span><br><span class="line">          mountPath: /usr/share/busybox</span><br><span class="line">          readOnly: false</span><br><span class="line">      volumes:</span><br><span class="line">      - name: ceph-vol1</span><br><span class="line">        persistentVolumeClaim:</span><br><span class="line">          claimName: ceph-claim</span><br><span class="line">          </span><br><span class="line">[root@master ceph]# kubectl create -f ceph-deployment.yaml</span><br><span class="line">deployment &quot;ceph-deployment&quot; created</span><br><span class="line"></span><br><span class="line">[root@master ceph]# kubectl get deploy </span><br><span class="line">NAME              DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE</span><br><span class="line">ceph-deployment   1         1         1            1           12s</span><br><span class="line"></span><br><span class="line">[root@master ceph]# kubectl get po |grep ceph-deployment</span><br><span class="line">ceph-deployment-2188074045-s3hg1   1/1       Running   0          30s</span><br></pre></td></tr></table></figure>
+<p>持久化数据测试</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">[root@master ceph]# kubectl exec -it ceph-deployment-2188074045-s3hg1 sh</span><br><span class="line"></span><br><span class="line">/usr/share/busybox # echo &quot;test&quot; &gt; /usr/share/busybox/test.txt</span><br><span class="line"></span><br><span class="line"># 测试数据已经写入</span><br><span class="line">/usr/share/busybox # cat  /usr/share/busybox/test.txt</span><br><span class="line">test</span><br><span class="line"></span><br><span class="line"># 删除po，因为是deployment，所以k8s会自动建立一个po，以保持副本为1</span><br><span class="line">[root@master ceph]# kubectl delete po ceph-deployment-2188074045-s3hg1</span><br><span class="line">pod &quot;ceph-deployment-2188074045-s3hg1&quot; deleted</span><br><span class="line"></span><br><span class="line"># 新的po已经建立好了 </span><br><span class="line">[root@master ceph]# kubectl get po</span><br><span class="line">NAME                               READY     STATUS    RESTARTS   AGE</span><br><span class="line">ceph-deployment-2188074045-qn9rb   1/1       Running   0          46s</span><br><span class="line"></span><br><span class="line"># 验证po可以漂移，但是挂载的卷组不会漂移</span><br><span class="line">[root@master ceph]#  kubectl exec -it ceph-deployment-2188074045-qn9rb sh/</span><br><span class="line"># cat /usr/share/busybox/test.txt </span><br><span class="line">test</span><br></pre></td></tr></table></figure>
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">ceph</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">kubernetes</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2018/11/13/cjpm8f7vt000aznfy1amnxxmw/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-Ceph-RBD安装配置" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
   <div class="article-inner">
     
@@ -159,12 +486,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjoqqe4t20005cbfidvpzywoe/">Ceph RBD安装配置</a>
+      <a class="article-title" href="/2018/11/13/cjpm8f7vm0004znfyz8vjumhi/">Ceph RBD安装配置</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjoqqe4t20005cbfidvpzywoe/" class="archive-article-date">
+        <a href="/2018/11/13/cjpm8f7vm0004znfyz8vjumhi/" class="archive-article-date">
   	<time datetime="2018-11-13T07:18:15.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -294,7 +621,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjoqqe4t20005cbfidvpzywoe/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjpm8f7vm0004znfyz8vjumhi/">展开全文 >></a>
         </p>
       
 
@@ -331,12 +658,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjoqqe4uz0023cbfifkrejwbh/">Oracle使用PL/SQL导出csv文件</a>
+      <a class="article-title" href="/2018/11/13/cjpm8f7x1001kznfyegbspm08/">Oracle使用PL/SQL导出csv文件</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjoqqe4uz0023cbfifkrejwbh/" class="archive-article-date">
+        <a href="/2018/11/13/cjpm8f7x1001kznfyegbspm08/" class="archive-article-date">
   	<time datetime="2018-11-13T07:12:27.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -371,7 +698,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjoqqe4uz0023cbfifkrejwbh/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjpm8f7x1001kznfyegbspm08/">展开全文 >></a>
         </p>
       
 
@@ -408,12 +735,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjoqqe4v3002acbficwhl13aq/">使用yumdownloader下载rpm包</a>
+      <a class="article-title" href="/2018/11/13/cjpm8f7x5001qznfy4ll3hhc6/">使用yumdownloader下载rpm包</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjoqqe4v3002acbficwhl13aq/" class="archive-article-date">
+        <a href="/2018/11/13/cjpm8f7x5001qznfy4ll3hhc6/" class="archive-article-date">
   	<time datetime="2018-11-13T07:10:14.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -448,7 +775,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjoqqe4v3002acbficwhl13aq/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjpm8f7x5001qznfy4ll3hhc6/">展开全文 >></a>
         </p>
       
 
@@ -485,12 +812,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjoqqe4uj001icbfi0pxqr44t/">Mongodb权限概念</a>
+      <a class="article-title" href="/2018/11/13/cjpm8f7wm0012znfy9m2j3tx4/">Mongodb权限概念</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjoqqe4uj001icbfi0pxqr44t/" class="archive-article-date">
+        <a href="/2018/11/13/cjpm8f7wm0012znfy9m2j3tx4/" class="archive-article-date">
   	<time datetime="2018-11-13T06:56:03.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -595,7 +922,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjoqqe4uj001icbfi0pxqr44t/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjpm8f7wm0012znfy9m2j3tx4/">展开全文 >></a>
         </p>
       
 
@@ -632,12 +959,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjoqqe4ug001dcbfi1e0d7ekz/">Mongodb sharded cluster using keyfile</a>
+      <a class="article-title" href="/2018/11/13/cjpm8f7wh000xznfyjlgktb3b/">Mongodb sharded cluster using keyfile</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjoqqe4ug001dcbfi1e0d7ekz/" class="archive-article-date">
+        <a href="/2018/11/13/cjpm8f7wh000xznfyjlgktb3b/" class="archive-article-date">
   	<time datetime="2018-11-13T06:53:33.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -740,7 +1067,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjoqqe4ug001dcbfi1e0d7ekz/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjpm8f7wh000xznfyjlgktb3b/">展开全文 >></a>
         </p>
       
 
@@ -777,12 +1104,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjoqqe4v00025cbfiyo16or0r/">Oracle并发查询占用大量process数据库无法登陆</a>
+      <a class="article-title" href="/2018/11/13/cjpm8f7wy001gznfyldqsbazv/">Oracle并发查询占用大量process数据库无法登陆</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjoqqe4v00025cbfiyo16or0r/" class="archive-article-date">
+        <a href="/2018/11/13/cjpm8f7wy001gznfyldqsbazv/" class="archive-article-date">
   	<time datetime="2018-11-13T06:51:54.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -895,7 +1222,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjoqqe4v00025cbfiyo16or0r/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjpm8f7wy001gznfyldqsbazv/">展开全文 >></a>
         </p>
       
 
@@ -932,12 +1259,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjoqqe4ui001gcbfiiv5x5jig/">Mongodb同步慢分析</a>
+      <a class="article-title" href="/2018/11/13/cjpm8f7wj000yznfyao5nk1jn/">Mongodb同步慢分析</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjoqqe4ui001gcbfiiv5x5jig/" class="archive-article-date">
+        <a href="/2018/11/13/cjpm8f7wj000yznfyao5nk1jn/" class="archive-article-date">
   	<time datetime="2018-11-13T06:49:26.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -1004,7 +1331,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjoqqe4ui001gcbfiiv5x5jig/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjpm8f7wj000yznfyao5nk1jn/">展开全文 >></a>
         </p>
       
 
@@ -1041,12 +1368,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjoqqe4ul001lcbfi4awjdri8/">Mongodb幂等性的代价</a>
+      <a class="article-title" href="/2018/11/13/cjpm8f7wf000uznfyoachw4aa/">Mongodb幂等性的代价</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjoqqe4ul001lcbfi4awjdri8/" class="archive-article-date">
+        <a href="/2018/11/13/cjpm8f7wf000uznfyoachw4aa/" class="archive-article-date">
   	<time datetime="2018-11-13T06:46:15.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -1087,164 +1414,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjoqqe4ul001lcbfi4awjdri8/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-Oracle多份路径备份" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjoqqe4v10028cbfixnjd89px/">Oracle多份路径备份</a>
-    </h1>
-  
-
-        
-        <a href="/2018/11/13/cjoqqe4v10028cbfixnjd89px/" class="archive-article-date">
-  	<time datetime="2018-11-13T06:43:20.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h4 id="建立备份目录"><a href="#建立备份目录" class="headerlink" title="建立备份目录"></a>建立备份目录</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd /backup</span><br><span class="line">mkdir data rman logs arch</span><br></pre></td></tr></table></figure>
-<h4 id="配置rman"><a href="#配置rman" class="headerlink" title="配置rman"></a>配置rman</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">rman target /</span><br><span class="line"></span><br><span class="line">CONFIGURE DATAFILE BACKUP COPIES FOR DEVICE TYPE DISK TO 2;</span><br><span class="line">CONFIGURE ARCHIVELOG BACKUP COPIES FOR DEVICE TYPE DISK TO 2;</span><br></pre></td></tr></table></figure>
-<h4 id="配置rman-backup-twoaddr-sh"><a href="#配置rman-backup-twoaddr-sh" class="headerlink" title="配置rman_backup_twoaddr.sh"></a>配置rman_backup_twoaddr.sh</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span>!/bin/ksh</span><br><span class="line">export LANG=en_US</span><br><span class="line">BACKUP_DATE=`date +%d`</span><br><span class="line">RMAN_LOG_FILE=/opt/backup/logs/rmanlog`date +%Y%m%d`.out</span><br><span class="line">TODAY=`date`</span><br><span class="line">USER=`id|cut -d "(" -f2|cut -d ")" -f1`</span><br><span class="line">echo "-----------------$TODAY-------------------"&gt;$RMAN_LOG_FILE</span><br><span class="line">ORACLE_HOME=/opt/ora10g/db_1</span><br><span class="line">export ORACLE_HOME</span><br><span class="line">RMAN=$ORACLE_HOME/bin/rman</span><br><span class="line">export RMAN</span><br><span class="line">ORACLE_SID=zmedi</span><br><span class="line">export ORACLE_SID</span><br><span class="line">ORACLE_USER=oracle</span><br><span class="line">export ORACLE_USER</span><br><span class="line"></span><br><span class="line">echo "ORACLE_SID: $ORACLE_SID"&gt;&gt;$RMAN_LOG_FILE</span><br><span class="line">echo "ORACLE_HOME:$ORACLE_HOME"&gt;&gt;$RMAN_LOG_FILE</span><br><span class="line">echo "ORACLE_USER:$ORACLE_USER"&gt;&gt;$RMAN_LOG_FILE</span><br><span class="line">echo "=========================================="&gt;&gt;$RMAN_LOG_FILE</span><br><span class="line">echo "BACKUP DATABASE BEGIN......"&gt;&gt;$RMAN_LOG_FILE</span><br><span class="line">echo "                   "&gt;&gt;$RMAN_LOG_FILE</span><br><span class="line">chmod 666 $RMAN_LOG_FILE</span><br><span class="line"></span><br><span class="line">WEEK_DAILY=`date +%a`</span><br><span class="line">case  "$WEEK_DAILY" in</span><br><span class="line">       "Mon")</span><br><span class="line">            BAK_LEVEL=2</span><br><span class="line">            ;;</span><br><span class="line">       "Tue")</span><br><span class="line">            BAK_LEVEL=2</span><br><span class="line">            ;;</span><br><span class="line">       "Wed")</span><br><span class="line">            BAK_LEVEL=2</span><br><span class="line">            ;;</span><br><span class="line">       "Thu")</span><br><span class="line">            BAK_LEVEL=1</span><br><span class="line">            ;;</span><br><span class="line">       "Fri")</span><br><span class="line">            BAK_LEVEL=2</span><br><span class="line">            ;;</span><br><span class="line">       "Sat")</span><br><span class="line">            BAK_LEVEL=2</span><br><span class="line">            ;;</span><br><span class="line">       "Sun")</span><br><span class="line">            BAK_LEVEL=0</span><br><span class="line">            ;;</span><br><span class="line">       "*")</span><br><span class="line">            BAK_LEVEL=error</span><br><span class="line">esac</span><br><span class="line"></span><br><span class="line">export BAK_LEVEL=$BAK_LEVEL</span><br><span class="line">echo "Today is : $WEEK_DAILY  incremental level= $BAK_LEVEL"&gt;&gt;$RMAN_LOG_FILE</span><br><span class="line"></span><br><span class="line">RUN_STR="</span><br><span class="line">BAK_LEVEL=$BAK_LEVEL</span><br><span class="line">export BAK_LEVEL</span><br><span class="line">ORACLE_HOME=$ORACLE_HOME</span><br><span class="line">export ORACLE_HOME</span><br><span class="line">ORACLE_SID=$ORACLE_SID</span><br><span class="line">export ORACLE_SID</span><br><span class="line"><span class="meta">$</span>RMAN nocatalog TARGET / msglog $RMAN_LOG_FILE append &lt;&lt;EOF</span><br><span class="line">run</span><br><span class="line">&#123;</span><br><span class="line">allocate channel c1 type disk MAXPIECESIZE=64G;</span><br><span class="line">allocate channel c2 type disk MAXPIECESIZE=64G;</span><br><span class="line">allocate channel c3 type disk MAXPIECESIZE=64G;</span><br><span class="line">allocate channel c4 type disk MAXPIECESIZE=64G;</span><br><span class="line">backup as compressed backupset incremental level= $BAK_LEVEL  skip inaccessible  </span><br><span class="line">Database format='/opt/backup/data/lev"$BAK_LEVEL"_%d_%U','/opt/nfsbackup/246zgwdb/rmanbackup/data/lev"$BAK_LEVEL"_%d_%U' tag='lev"$BAK_LEVEL"'</span><br><span class="line">plus archivelog format='/opt/backup/data/arch_%d_%U','/opt/nfsbackup/246zgwdb/rmanbackup/data/arch_%d_%U' delete input;</span><br><span class="line">release channel c1;</span><br><span class="line">release channel c2;</span><br><span class="line">release channel c3;</span><br><span class="line">release channel c4;</span><br><span class="line">&#125;</span><br><span class="line">allocate channel for maintenance device type disk;</span><br><span class="line">report obsolete;</span><br><span class="line">delete noprompt obsolete;</span><br><span class="line">crosscheck backup;</span><br><span class="line">delete noprompt expired backup;</span><br><span class="line">list backup summary;</span><br><span class="line">release channel;</span><br><span class="line">EOF</span><br><span class="line">"</span><br><span class="line"><span class="meta"> #</span> Initiate the command string</span><br><span class="line"></span><br><span class="line">if [ "$CUSER" = "root" ]</span><br><span class="line">then</span><br><span class="line">    echo "Root Command String: $RUN_STR" &gt;&gt; $RMAN_LOG_FILE    </span><br><span class="line">    su - $ORACLE_USER -c "$RUN_STR" &gt;&gt; $RMAN_LOG_FILE</span><br><span class="line">    RSTAT=$?</span><br><span class="line">else</span><br><span class="line">    echo "User Command String: $RUN_STR" &gt;&gt; $RMAN_LOG_FILE    </span><br><span class="line">    /bin/sh -c "$RUN_STR" &gt;&gt; $RMAN_LOG_FILE</span><br><span class="line">    RSTAT=$?</span><br><span class="line">fi</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span> ---------------------------------------------------------------------------</span><br><span class="line"><span class="meta">#</span> Log the completion of this script.</span><br><span class="line"><span class="meta">#</span> ---------------------------------------------------------------------------</span><br><span class="line"></span><br><span class="line">if [ "$RSTAT" = "0" ]</span><br><span class="line">then</span><br><span class="line">    LOGMSG="ended successfully"</span><br><span class="line">else</span><br><span class="line">    LOGMSG="ended in error"</span><br><span class="line">fi</span><br><span class="line">echo &gt;&gt; $RMAN_LOG_FILE</span><br><span class="line">echo Script $0 &gt;&gt; $RMAN_LOG_FILE</span><br><span class="line">echo ==== $LOGMSG on `date` ==== &gt;&gt; $RMAN_LOG_FILE</span><br><span class="line">echo &gt;&gt; $RMAN_LOG_FILE</span><br><span class="line">exit $RSTAT</span><br></pre></td></tr></table></figure>
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">oracle</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjoqqe4v10028cbfixnjd89px/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-MongoDB-Manage-Sharded-Cluster-Balancer" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjoqqe4ua0017cbfiocedarw1/">MongoDB Manage Sharded Cluster Balancer</a>
-    </h1>
-  
-
-        
-        <a href="/2018/11/13/cjoqqe4ua0017cbfiocedarw1/" class="archive-article-date">
-  	<time datetime="2018-11-13T06:33:36.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p><a href="https://docs.mongodb.org/manual/tutorial/manage-sharded-cluster-balancer/" target="_blank" rel="noopener">https://docs.mongodb.org/manual/tutorial/manage-sharded-cluster-balancer/</a></p>
-<h4 id="Check-the-Balancer-State"><a href="#Check-the-Balancer-State" class="headerlink" title="Check the Balancer State"></a>Check the Balancer State</h4><p>The following command checks if the balancer is enabled (i.e. that the balancer is allowed to run). The command does not check if the balancer is active (i.e. if it is actively balancing chunks).</p>
-<p>To see if the balancer is enabled in your cluster, issue the following command, which returns a boolean:</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh.getBalancerState()</span><br></pre></td></tr></table></figure>
-<h4 id="Check-the-Balancer-Lock"><a href="#Check-the-Balancer-Lock" class="headerlink" title="Check the Balancer Lock"></a>Check the Balancer Lock</h4><p>To see if the balancer process is active in your cluster, do the following:</p>
-<p>Connect to any mongos in the cluster using the mongo shell.<br>Issue the following command to switch to the Config Database:<br>use config<br>Use the following query to return the balancer lock:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">db.locks.find( &#123; _id : &quot;balancer&quot; &#125; ).pretty()</span><br></pre></td></tr></table></figure>
-<h4 id="Schedule-the-Balancing-Window"><a href="#Schedule-the-Balancing-Window" class="headerlink" title="Schedule the Balancing Window"></a>Schedule the Balancing Window</h4><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">use config</span><br><span class="line">sh.setBalancerState( true )</span><br><span class="line">db.settings.update(</span><br><span class="line">   &#123; _id: "balancer" &#125;,</span><br><span class="line">   &#123; $set: &#123; activeWindow : &#123; start: "23:00", stop: "6:00" &#125; &#125; &#125;,</span><br><span class="line">   &#123; upsert: true &#125;</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
-<h4 id="Remove-a-Balancing-Window-Schedule"><a href="#Remove-a-Balancing-Window-Schedule" class="headerlink" title="Remove a Balancing Window Schedule"></a>Remove a Balancing Window Schedule</h4><p>If you have set the balancing window and wish to remove the schedule so that the balancer is always running, issue the following sequence of operations:</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">use config</span><br><span class="line">db.settings.update(&#123; _id : "balancer" &#125;, &#123; $unset : &#123; activeWindow : true &#125; &#125;)</span><br></pre></td></tr></table></figure>
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">mongodb</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjoqqe4ua0017cbfiocedarw1/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjpm8f7wf000uznfyoachw4aa/">展开全文 >></a>
         </p>
       
 
@@ -1391,10 +1561,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">deep learning</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color1">kubernetes</a>
               </li>
              
@@ -1403,15 +1569,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">deep learning</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">mongodb</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">mysql</a>
+                <a href="javascript:void(0)" class="js-tag color2">oracle</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color2">oracle</a>
+                <a href="javascript:void(0)" class="js-tag color1">mysql</a>
               </li>
             
             <div class="clearfix"></div>

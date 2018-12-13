@@ -152,6 +152,163 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-Oracle多份路径备份" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/11/13/cjpm8f7wz001iznfy5wu0vd3a/">Oracle多份路径备份</a>
+    </h1>
+  
+
+        
+        <a href="/2018/11/13/cjpm8f7wz001iznfy5wu0vd3a/" class="archive-article-date">
+  	<time datetime="2018-11-13T06:43:20.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h4 id="建立备份目录"><a href="#建立备份目录" class="headerlink" title="建立备份目录"></a>建立备份目录</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd /backup</span><br><span class="line">mkdir data rman logs arch</span><br></pre></td></tr></table></figure>
+<h4 id="配置rman"><a href="#配置rman" class="headerlink" title="配置rman"></a>配置rman</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">rman target /</span><br><span class="line"></span><br><span class="line">CONFIGURE DATAFILE BACKUP COPIES FOR DEVICE TYPE DISK TO 2;</span><br><span class="line">CONFIGURE ARCHIVELOG BACKUP COPIES FOR DEVICE TYPE DISK TO 2;</span><br></pre></td></tr></table></figure>
+<h4 id="配置rman-backup-twoaddr-sh"><a href="#配置rman-backup-twoaddr-sh" class="headerlink" title="配置rman_backup_twoaddr.sh"></a>配置rman_backup_twoaddr.sh</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">!/bin/ksh</span></span><br><span class="line">export LANG=en_US</span><br><span class="line">BACKUP_DATE=`date +%d`</span><br><span class="line">RMAN_LOG_FILE=/opt/backup/logs/rmanlog`date +%Y%m%d`.out</span><br><span class="line">TODAY=`date`</span><br><span class="line">USER=`id|cut -d "(" -f2|cut -d ")" -f1`</span><br><span class="line">echo "-----------------$TODAY-------------------"&gt;$RMAN_LOG_FILE</span><br><span class="line">ORACLE_HOME=/opt/ora10g/db_1</span><br><span class="line">export ORACLE_HOME</span><br><span class="line">RMAN=$ORACLE_HOME/bin/rman</span><br><span class="line">export RMAN</span><br><span class="line">ORACLE_SID=zmedi</span><br><span class="line">export ORACLE_SID</span><br><span class="line">ORACLE_USER=oracle</span><br><span class="line">export ORACLE_USER</span><br><span class="line"></span><br><span class="line">echo "ORACLE_SID: $ORACLE_SID"&gt;&gt;$RMAN_LOG_FILE</span><br><span class="line">echo "ORACLE_HOME:$ORACLE_HOME"&gt;&gt;$RMAN_LOG_FILE</span><br><span class="line">echo "ORACLE_USER:$ORACLE_USER"&gt;&gt;$RMAN_LOG_FILE</span><br><span class="line">echo "=========================================="&gt;&gt;$RMAN_LOG_FILE</span><br><span class="line">echo "BACKUP DATABASE BEGIN......"&gt;&gt;$RMAN_LOG_FILE</span><br><span class="line">echo "                   "&gt;&gt;$RMAN_LOG_FILE</span><br><span class="line">chmod 666 $RMAN_LOG_FILE</span><br><span class="line"></span><br><span class="line">WEEK_DAILY=`date +%a`</span><br><span class="line">case  "$WEEK_DAILY" in</span><br><span class="line">       "Mon")</span><br><span class="line">            BAK_LEVEL=2</span><br><span class="line">            ;;</span><br><span class="line">       "Tue")</span><br><span class="line">            BAK_LEVEL=2</span><br><span class="line">            ;;</span><br><span class="line">       "Wed")</span><br><span class="line">            BAK_LEVEL=2</span><br><span class="line">            ;;</span><br><span class="line">       "Thu")</span><br><span class="line">            BAK_LEVEL=1</span><br><span class="line">            ;;</span><br><span class="line">       "Fri")</span><br><span class="line">            BAK_LEVEL=2</span><br><span class="line">            ;;</span><br><span class="line">       "Sat")</span><br><span class="line">            BAK_LEVEL=2</span><br><span class="line">            ;;</span><br><span class="line">       "Sun")</span><br><span class="line">            BAK_LEVEL=0</span><br><span class="line">            ;;</span><br><span class="line">       "*")</span><br><span class="line">            BAK_LEVEL=error</span><br><span class="line">esac</span><br><span class="line"></span><br><span class="line">export BAK_LEVEL=$BAK_LEVEL</span><br><span class="line">echo "Today is : $WEEK_DAILY  incremental level= $BAK_LEVEL"&gt;&gt;$RMAN_LOG_FILE</span><br><span class="line"></span><br><span class="line">RUN_STR="</span><br><span class="line">BAK_LEVEL=$BAK_LEVEL</span><br><span class="line">export BAK_LEVEL</span><br><span class="line">ORACLE_HOME=$ORACLE_HOME</span><br><span class="line">export ORACLE_HOME</span><br><span class="line">ORACLE_SID=$ORACLE_SID</span><br><span class="line">export ORACLE_SID</span><br><span class="line"><span class="meta">$</span><span class="bash">RMAN nocatalog TARGET / msglog <span class="variable">$RMAN_LOG_FILE</span> append &lt;&lt;EOF</span></span><br><span class="line">run</span><br><span class="line">&#123;</span><br><span class="line">allocate channel c1 type disk MAXPIECESIZE=64G;</span><br><span class="line">allocate channel c2 type disk MAXPIECESIZE=64G;</span><br><span class="line">allocate channel c3 type disk MAXPIECESIZE=64G;</span><br><span class="line">allocate channel c4 type disk MAXPIECESIZE=64G;</span><br><span class="line">backup as compressed backupset incremental level= $BAK_LEVEL  skip inaccessible  </span><br><span class="line">Database format='/opt/backup/data/lev"$BAK_LEVEL"_%d_%U','/opt/nfsbackup/246zgwdb/rmanbackup/data/lev"$BAK_LEVEL"_%d_%U' tag='lev"$BAK_LEVEL"'</span><br><span class="line">plus archivelog format='/opt/backup/data/arch_%d_%U','/opt/nfsbackup/246zgwdb/rmanbackup/data/arch_%d_%U' delete input;</span><br><span class="line">release channel c1;</span><br><span class="line">release channel c2;</span><br><span class="line">release channel c3;</span><br><span class="line">release channel c4;</span><br><span class="line">&#125;</span><br><span class="line">allocate channel for maintenance device type disk;</span><br><span class="line">report obsolete;</span><br><span class="line">delete noprompt obsolete;</span><br><span class="line">crosscheck backup;</span><br><span class="line">delete noprompt expired backup;</span><br><span class="line">list backup summary;</span><br><span class="line">release channel;</span><br><span class="line">EOF</span><br><span class="line">"</span><br><span class="line"><span class="meta"> #</span><span class="bash"> Initiate the <span class="built_in">command</span> string</span></span><br><span class="line"></span><br><span class="line">if [ "$CUSER" = "root" ]</span><br><span class="line">then</span><br><span class="line">    echo "Root Command String: $RUN_STR" &gt;&gt; $RMAN_LOG_FILE    </span><br><span class="line">    su - $ORACLE_USER -c "$RUN_STR" &gt;&gt; $RMAN_LOG_FILE</span><br><span class="line">    RSTAT=$?</span><br><span class="line">else</span><br><span class="line">    echo "User Command String: $RUN_STR" &gt;&gt; $RMAN_LOG_FILE    </span><br><span class="line">    /bin/sh -c "$RUN_STR" &gt;&gt; $RMAN_LOG_FILE</span><br><span class="line">    RSTAT=$?</span><br><span class="line">fi</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> ---------------------------------------------------------------------------</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> Log the completion of this script.</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> ---------------------------------------------------------------------------</span></span><br><span class="line"></span><br><span class="line">if [ "$RSTAT" = "0" ]</span><br><span class="line">then</span><br><span class="line">    LOGMSG="ended successfully"</span><br><span class="line">else</span><br><span class="line">    LOGMSG="ended in error"</span><br><span class="line">fi</span><br><span class="line">echo &gt;&gt; $RMAN_LOG_FILE</span><br><span class="line">echo Script $0 &gt;&gt; $RMAN_LOG_FILE</span><br><span class="line">echo ==== $LOGMSG on `date` ==== &gt;&gt; $RMAN_LOG_FILE</span><br><span class="line">echo &gt;&gt; $RMAN_LOG_FILE</span><br><span class="line">exit $RSTAT</span><br></pre></td></tr></table></figure>
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">oracle</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2018/11/13/cjpm8f7wz001iznfy5wu0vd3a/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-MongoDB-Manage-Sharded-Cluster-Balancer" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/11/13/cjpm8f7w7000mznfyt6p532nx/">MongoDB Manage Sharded Cluster Balancer</a>
+    </h1>
+  
+
+        
+        <a href="/2018/11/13/cjpm8f7w7000mznfyt6p532nx/" class="archive-article-date">
+  	<time datetime="2018-11-13T06:33:36.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p><a href="https://docs.mongodb.org/manual/tutorial/manage-sharded-cluster-balancer/" target="_blank" rel="noopener">https://docs.mongodb.org/manual/tutorial/manage-sharded-cluster-balancer/</a></p>
+<h4 id="Check-the-Balancer-State"><a href="#Check-the-Balancer-State" class="headerlink" title="Check the Balancer State"></a>Check the Balancer State</h4><p>The following command checks if the balancer is enabled (i.e. that the balancer is allowed to run). The command does not check if the balancer is active (i.e. if it is actively balancing chunks).</p>
+<p>To see if the balancer is enabled in your cluster, issue the following command, which returns a boolean:</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh.getBalancerState()</span><br></pre></td></tr></table></figure>
+<h4 id="Check-the-Balancer-Lock"><a href="#Check-the-Balancer-Lock" class="headerlink" title="Check the Balancer Lock"></a>Check the Balancer Lock</h4><p>To see if the balancer process is active in your cluster, do the following:</p>
+<p>Connect to any mongos in the cluster using the mongo shell.<br>Issue the following command to switch to the Config Database:<br>use config<br>Use the following query to return the balancer lock:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">db.locks.find( &#123; _id : &quot;balancer&quot; &#125; ).pretty()</span><br></pre></td></tr></table></figure>
+<h4 id="Schedule-the-Balancing-Window"><a href="#Schedule-the-Balancing-Window" class="headerlink" title="Schedule the Balancing Window"></a>Schedule the Balancing Window</h4><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">use config</span><br><span class="line">sh.setBalancerState( true )</span><br><span class="line">db.settings.update(</span><br><span class="line">   &#123; _id: "balancer" &#125;,</span><br><span class="line">   &#123; $set: &#123; activeWindow : &#123; start: "23:00", stop: "6:00" &#125; &#125; &#125;,</span><br><span class="line">   &#123; upsert: true &#125;</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+<h4 id="Remove-a-Balancing-Window-Schedule"><a href="#Remove-a-Balancing-Window-Schedule" class="headerlink" title="Remove a Balancing Window Schedule"></a>Remove a Balancing Window Schedule</h4><p>If you have set the balancing window and wish to remove the schedule so that the balancer is always running, issue the following sequence of operations:</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">use config</span><br><span class="line">db.settings.update(&#123; _id : "balancer" &#125;, &#123; $unset : &#123; activeWindow : true &#125; &#125;)</span><br></pre></td></tr></table></figure>
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">mongodb</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2018/11/13/cjpm8f7w7000mznfyt6p532nx/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-MongoDB执行计划解读" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
   <div class="article-inner">
     
@@ -159,12 +316,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjoqqe4ue001bcbfidrkm919x/">MongoDB执行计划解读</a>
+      <a class="article-title" href="/2018/11/13/cjpm8f7wd000tznfysv82qiwk/">MongoDB执行计划解读</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjoqqe4ue001bcbfidrkm919x/" class="archive-article-date">
+        <a href="/2018/11/13/cjpm8f7wd000tznfysv82qiwk/" class="archive-article-date">
   	<time datetime="2018-11-13T06:30:45.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -265,7 +422,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjoqqe4ue001bcbfidrkm919x/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjpm8f7wd000tznfysv82qiwk/">展开全文 >></a>
         </p>
       
 
@@ -302,12 +459,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjoqqe4uc0019cbfi2z0dztqv/">MongoDB记录慢日志</a>
+      <a class="article-title" href="/2018/11/13/cjpm8f7wa000pznfywuv17teu/">MongoDB记录慢日志</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjoqqe4uc0019cbfi2z0dztqv/" class="archive-article-date">
+        <a href="/2018/11/13/cjpm8f7wa000pznfywuv17teu/" class="archive-article-date">
   	<time datetime="2018-11-13T06:26:46.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -347,7 +504,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjoqqe4uc0019cbfi2z0dztqv/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjpm8f7wa000pznfywuv17teu/">展开全文 >></a>
         </p>
       
 
@@ -384,12 +541,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjoqqe4v4002dcbfiv4xes4e7/">博客误删除了</a>
+      <a class="article-title" href="/2018/11/13/cjpm8f7x7001tznfybl96l6gg/">博客误删除了</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjoqqe4v4002dcbfiv4xes4e7/" class="archive-article-date">
+        <a href="/2018/11/13/cjpm8f7x7001tznfybl96l6gg/" class="archive-article-date">
   	<time datetime="2018-11-13T06:09:43.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -413,7 +570,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjoqqe4v4002dcbfiv4xes4e7/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjpm8f7x7001tznfybl96l6gg/">展开全文 >></a>
         </p>
       
 
@@ -560,10 +717,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">deep learning</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color1">kubernetes</a>
               </li>
              
@@ -572,15 +725,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">deep learning</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">mongodb</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">mysql</a>
+                <a href="javascript:void(0)" class="js-tag color2">oracle</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color2">oracle</a>
+                <a href="javascript:void(0)" class="js-tag color1">mysql</a>
               </li>
             
             <div class="clearfix"></div>
