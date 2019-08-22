@@ -152,6 +152,455 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-alluxio-ha-cluster" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/08/22/cjzmeyv87001uz5fy4yvkqvvi/">alluxio ha cluster</a>
+    </h1>
+  
+
+        
+        <a href="/2019/08/22/cjzmeyv87001uz5fy4yvkqvvi/" class="archive-article-date">
+  	<time datetime="2019-08-22T08:16:20.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-08-22</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="alluxio-ha-cluster"><a href="#alluxio-ha-cluster" class="headerlink" title="alluxio ha cluster"></a>alluxio ha cluster</h1><h2 id="alluxio-site-properties设置"><a href="#alluxio-site-properties设置" class="headerlink" title="alluxio-site.properties设置"></a>alluxio-site.properties设置</h2><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">vi conf/alluxio-site.properties</span><br><span class="line"><span class="meta">#</span><span class="bash"> 每个master节点就写自己的</span></span><br><span class="line">alluxio.master.hostname=node01.hadoop.cis</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 使用zookeeper获取master</span></span><br><span class="line">alluxio.zookeeper.enabled=true</span><br><span class="line">alluxio.zookeeper.address=node01.hadoop.cis:2181,node02.hadoop.cis:2181,master02.hadoop.cis:2181</span><br><span class="line">alluxio.master.journal.folder=hdfs://master02.hadoop.cis:8020/alluxio/journal</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 设置ufs至hdfs</span></span><br><span class="line">alluxio.underfs.address=hdfs://master02.hadoop.cis:8020/alluxio</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 设置hdfs相关配置</span></span><br><span class="line">alluxio.underfs.hdfs.configuration=/etc/hadoop/conf/hdfs-site.xml:/etc/hadoop/conf/core-site.xml</span><br></pre></td></tr></table></figure>
+<h2 id="master"><a href="#master" class="headerlink" title="master"></a>master</h2><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">vi conf/masters </span><br><span class="line"></span><br><span class="line">node01.hadoop.cis</span><br><span class="line">node02.hadoop.cis</span><br></pre></td></tr></table></figure>
+<h2 id="workers"><a href="#workers" class="headerlink" title="workers"></a>workers</h2><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">vi conf/workers</span><br><span class="line"></span><br><span class="line">node01.hadoop.cis</span><br><span class="line">node02.hadoop.cis</span><br></pre></td></tr></table></figure>
+<h2 id="SudoMount设置"><a href="#SudoMount设置" class="headerlink" title="SudoMount设置"></a>SudoMount设置</h2><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo "alluxio ALL=(ALL) NOPASSWD: /bin/mount * /mnt/ramdisk, /bin/umount * /mnt/ramdisk, /bin/mkdir * /mnt/ramdisk, /bin/chmod * /mnt/ramdisk" &gt;&gt;/etc/sudoers</span><br></pre></td></tr></table></figure>
+<h2 id="维护操作"><a href="#维护操作" class="headerlink" title="维护操作"></a>维护操作</h2><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 先进行初始化</span></span><br><span class="line">bin/alluxio format</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 开启集群</span></span><br><span class="line">bin/alluxio-start.sh all SudoMount</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 集群进行测试</span></span><br><span class="line">bin/alluxio fs copyFromLocal LICENSE /LICENSE</span><br><span class="line">bin/alluxio fs persist /LICENSE</span><br><span class="line">bin/alluxio runTests    </span><br><span class="line">bin/alluxio fsadmin report</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 关闭集群</span></span><br><span class="line">bin/alluxio-stop.sh all</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 同步配置文件，会同步到所有的workers</span></span><br><span class="line">bin/alluxio copyDir conf/</span><br></pre></td></tr></table></figure>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">alluxio</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/08/22/cjzmeyv87001uz5fy4yvkqvvi/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-基于hive进行简单压缩技术测试" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/03/22/cjzmeyv8h002ez5fyc5jm1w69/">基于hive进行简单压缩技术测试</a>
+    </h1>
+  
+
+        
+        <a href="/2019/03/22/cjzmeyv8h002ez5fyc5jm1w69/" class="archive-article-date">
+  	<time datetime="2019-03-22T06:20:06.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-03-22</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>下载测试数据</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wget http://www.almhuette-raith.at/apache-log/access.log</span><br></pre></td></tr></table></figure>
+<p>准备测试数据，在hive中建立apachelog</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> apachelog (</span><br><span class="line"> ipaddress <span class="keyword">STRING</span>,</span><br><span class="line"> <span class="keyword">identity</span> <span class="keyword">STRING</span>,</span><br><span class="line"> <span class="keyword">user</span> <span class="keyword">STRING</span>,</span><br><span class="line"> <span class="built_in">time</span> <span class="keyword">STRING</span>,</span><br><span class="line"> request <span class="keyword">STRING</span>,</span><br><span class="line"> protocol <span class="keyword">STRING</span>,</span><br><span class="line"> <span class="keyword">status</span> <span class="keyword">STRING</span>,</span><br><span class="line"> <span class="keyword">size</span> <span class="keyword">STRING</span>,</span><br><span class="line"> referer <span class="keyword">STRING</span>,</span><br><span class="line"> <span class="keyword">agent</span> <span class="keyword">STRING</span>) </span><br><span class="line"><span class="keyword">ROW</span> <span class="keyword">FORMAT</span> SERDE <span class="string">'org.apache.hadoop.hive.contrib.serde2.RegexSerDe'</span> </span><br><span class="line"><span class="keyword">WITH</span> SERDEPROPERTIES (</span><br><span class="line"> <span class="string">"input.regex"</span> = <span class="string">"([^ ]*) ([^ ]*) ([^ ]*) (-|\\[[^\\]]*\\]) ([^ \"]*|\"[^\"]*) ([^ ]*\") (-|[0-9]*) (-|[0-9]*)(?: ([^ \"]*|\".*\") ([^ \"]*|\".*\"))?"</span>,<span class="string">"output.format.string"</span> = <span class="string">"%1$s %2$s %3$s %4$s %5$s %6$s %7$s %8$s %9$s %10$s"</span>)</span><br><span class="line"><span class="keyword">STORED</span> <span class="keyword">AS</span> TEXTFILE;</span><br></pre></td></tr></table></figure>
+<p>然后导入测试数据</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hive&gt;load data local inpath '/usr/toos/access_log' into table apachelog;</span><br></pre></td></tr></table></figure>
+<p>检查hadoop支持压缩</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">[root@master ~]<span class="comment"># hadoop checknative</span></span><br><span class="line">19/03/20 15:28:40 INFO bzip2.Bzip2Factory: Successfully loaded &amp; initialized native-bzip2 library system-native</span><br><span class="line">19/03/20 15:28:40 INFO zlib.ZlibFactory: Successfully loaded &amp; initialized native-zlib library</span><br><span class="line">Native library checking:</span><br><span class="line">hadoop:  <span class="literal">true</span> /usr/<span class="built_in">local</span>/hadoop-2.7.7/lib/native/libhadoop.so.1.0.0</span><br><span class="line">zlib:    <span class="literal">true</span> /lib64/libz.so.1</span><br><span class="line">snappy:  <span class="literal">true</span> /lib64/libsnappy.so.1</span><br><span class="line">lz4:     <span class="literal">true</span> revision:99</span><br><span class="line">bzip2:   <span class="literal">true</span> /lib64/libbz2.so.1</span><br><span class="line">openssl: <span class="literal">true</span> /lib64/libcrypto.so</span><br></pre></td></tr></table></figure>
+<p>记录未压缩的大小</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@master ~]<span class="comment">#  hadoop fs -du -h /user/hive/warehouse/</span></span><br><span class="line">561.8 M  /user/hive/warehouse/apachelog</span><br></pre></td></tr></table></figure>
+<p>BZip2</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SET</span> hive.exec.compress.output=<span class="literal">true</span>;</span><br><span class="line"><span class="keyword">SET</span> mapreduce.output.fileoutputformat.compress.codec=org.apache.hadoop.io.compress.BZip2Codec;</span><br><span class="line"></span><br><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> apachelog_bzip2 <span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span> <span class="keyword">as</span> <span class="keyword">select</span> * <span class="keyword">from</span> apachelog;</span><br></pre></td></tr></table></figure>
+<p>Snappy</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SET</span> hive.exec.compress.output=<span class="literal">true</span>;</span><br><span class="line"><span class="keyword">SET</span> mapreduce.output.fileoutputformat.compress.codec=org.apache.hadoop.io.compress.SnappyCodec;</span><br><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> apachelog_snappy</span><br><span class="line"><span class="keyword">ROW</span> <span class="keyword">FORMAT</span> <span class="keyword">DELIMITED</span> <span class="keyword">FIELDS</span> <span class="keyword">TERMINATED</span> <span class="keyword">BY</span> <span class="string">"\t"</span></span><br><span class="line"><span class="keyword">as</span> <span class="keyword">select</span> * <span class="keyword">from</span> apachelog;</span><br></pre></td></tr></table></figure>
+<p>Lz4Codec</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SET</span> hive.exec.compress.output=<span class="literal">true</span>;</span><br><span class="line"><span class="keyword">SET</span> mapreduce.output.fileoutputformat.compress.codec=org.apache.hadoop.io.compress.Lz4Codec;</span><br><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> apachelog_lz4</span><br><span class="line"><span class="keyword">ROW</span> <span class="keyword">FORMAT</span> <span class="keyword">DELIMITED</span> <span class="keyword">FIELDS</span> <span class="keyword">TERMINATED</span> <span class="keyword">BY</span> <span class="string">"\t"</span></span><br><span class="line"><span class="keyword">as</span> <span class="keyword">select</span> * <span class="keyword">from</span> apachelog;</span><br></pre></td></tr></table></figure>
+<p>记录大小</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[root@master ~]<span class="comment">#  hadoop fs -du -h /user/hive/warehouse/</span></span><br><span class="line">561.8 M  /user/hive/warehouse/apachelog</span><br><span class="line">9.9 M    /user/hive/warehouse/apachelog_bzip2</span><br><span class="line">29.5 M   /user/hive/warehouse/apachelog_lz4</span><br><span class="line">47.5 M   /user/hive/warehouse/apachelog_snappy</span><br></pre></td></tr></table></figure>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">hadoop</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">hive</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/03/22/cjzmeyv8h002ez5fyc5jm1w69/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-Hadoop-小文件引发的血案" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/03/19/cjzmeyv7s000zz5fyt0cty4bv/">Hadoop 小文件引发的血案</a>
+    </h1>
+  
+
+        
+        <a href="/2019/03/19/cjzmeyv7s000zz5fyt0cty4bv/" class="archive-article-date">
+  	<time datetime="2019-03-19T07:32:03.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-03-19</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Hadoop-HDFS-YARN-MapReduce"><a href="#Hadoop-HDFS-YARN-MapReduce" class="headerlink" title="Hadoop: HDFS/YARN/MapReduce"></a>Hadoop: HDFS/YARN/MapReduce</h1><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">HDFS has a master/slave architecture. An HDFS cluster consists of a single NameNode, a master server that manages the file system namespace and regulates access to files by clients. In addition, there are a number of DataNodes, usually one per node in the cluster, which manage storage attached to the nodes that they run on. HDFS exposes a file system namespace and allows user data to be stored in files. Internally, a file is split into one or more blocks and these blocks are stored in a set of DataNodes. The NameNode executes file system namespace operations like opening, closing, and renaming files and directories. It also determines the mapping of blocks to DataNodes. The DataNodes are responsible for serving read and write requests from the file system’s clients. The DataNodes also perform block creation, deletion, and replication upon instruction from the NameNode.</span><br></pre></td></tr></table></figure>
+<h2 id="HDFS"><a href="#HDFS" class="headerlink" title="HDFS"></a>HDFS</h2><ul>
+<li>NameNode</li>
+<li>DataNode</li>
+<li>SeconderyNameNode</li>
+</ul>
+<h2 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h2><ul>
+<li>Client</li>
+<li>NN<ul>
+<li>Single Point of Failure =&gt; HA</li>
+<li>metadata 谁/权限/文件对应的block信息</li>
+</ul>
+</li>
+<li>DN<ul>
+<li>多个节点</li>
+<li>存储数据</li>
+<li>和NN之间有心跳</li>
+</ul>
+</li>
+<li>Block<ul>
+<li>File存储HDFS,是按照block进行切分 64/128/256MB</li>
+</ul>
+</li>
+</ul>
+<p>生产上的东西一定要保证HA（HDFS/YARN..）</p>
+<p><img src="https://hadoop.apache.org/docs/r2.7.7/hadoop-project-dist/hadoop-hdfs/images/hdfsarchitecture.png" alt=""></p>
+<p><img src="https://hadoop.apache.org/docs/r2.7.7/hadoop-project-dist/hadoop-hdfs/images/hdfsdatanodes.png" alt=""></p>
+<p><img src="https://www.ibm.com/developerworks/cn/opensource/os-cn-hadoop-name-node/img001.png" alt=""></p>
+<h2 id="小文件"><a href="#小文件" class="headerlink" title="小文件"></a>小文件</h2><p>Hadoop适合大文件</p>
+<p>小文件</p>
+<ul>
+<li>明显小于block size的文件，例如：129MB = 128 + 1 </li>
+</ul>
+<p>hadoop目录、文件、block都会以元数据的方式存储下来。</p>
+<p>瓶颈</p>
+<ul>
+<li>磁盘io（iops）</li>
+<li>task启动销毁的开销</li>
+<li>资源有限</li>
+</ul>
+<p>三个部分：<strong>文件、目录和块</strong>。这三部分在元数据中各占用多少空间呢，下面是一个初略的计算：</p>
+<blockquote>
+<ol>
+<li>单条元数据大小：文件约250B，目录约290B，块约368B(152B+72*副本数3)</li>
+<li>集群元数据总条数：文件数约10000个，目录约5000个，块约20000个</li>
+<li>总占用内存大小： 250B<em>10000+290B</em>5000+368B*20000=10.78M</li>
+</ol>
+</blockquote>
+<p>处理方案：</p>
+<ol>
+<li>所有HDFS小文件数据导出到本地单个文件后，再存入HDFS使用管道：</li>
+<li>调用现有API方法 或 自行开发:org.apache.hadoop.fs.FileUtil.copyMerge()</li>
+<li>Hadoop自带方案Hadoop Archive</li>
+<li>Sequence File</li>
+<li>CombineFileInputFormat类</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line">hadoop fs -mv input/*.txt tmp</span><br><span class="line"><span class="built_in">wait</span></span><br><span class="line">hadoop jar /usr/<span class="built_in">local</span>/hadoop-2.7.7/share/hadoop/tools/lib/hadoop-streaming-2.7.7.jar \</span><br><span class="line">                   -Dmapred.reduce.tasks=1 \</span><br><span class="line">                   -input <span class="string">"/user/root/input/"</span> \</span><br><span class="line">                   -output <span class="string">"/user/root/output/"</span> \</span><br><span class="line">                   -mapper cat \</span><br><span class="line">                   -reducer cat</span><br><span class="line"><span class="built_in">wait</span></span><br><span class="line">hadoop fs -mv output/part-00000 input/large_file.txt</span><br><span class="line"><span class="built_in">wait</span></span><br><span class="line">hadoop fs -rm -R output/</span><br><span class="line"><span class="built_in">wait</span></span><br><span class="line">hadoop fs -rm tmp/*.txt</span><br></pre></td></tr></table></figure>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">hadoop</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">big data</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/03/19/cjzmeyv7s000zz5fyt0cty4bv/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-Oracle-pl-sql学习记录" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/02/15/cjzmeyv88001wz5fyll3704ka/">Oracle pl/sql学习记录</a>
+    </h1>
+  
+
+        
+        <a href="/2019/02/15/cjzmeyv88001wz5fyll3704ka/" class="archive-article-date">
+  	<time datetime="2019-02-15T08:44:11.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-02-15</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/02/15/cjzmeyv88001wz5fyll3704ka/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-brew-安装执行版本golang" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/01/24/cjzmeyv8g002bz5fywcozb8e3/">brew 安装执行版本golang</a>
+    </h1>
+  
+
+        
+        <a href="/2019/01/24/cjzmeyv8g002bz5fywcozb8e3/" class="archive-article-date">
+  	<time datetime="2019-01-24T01:31:35.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-01-24</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>如何使用homebrew如何安装指定版本的golang版本？</p>
+<ol>
+<li>删除、解绑之前的版本 <code>brew uninstall go &amp;&amp; brew unlink go</code></li>
+<li>查找可用的go版本<code>brew search go</code></li>
+<li>安装需要的版本<code>brew install go@1.9</code></li>
+<li>链接<code>brew link go@1.9 --force</code></li>
+</ol>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">brew</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/01/24/cjzmeyv8g002bz5fywcozb8e3/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-Vps-综合测试" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
   <div class="article-inner">
     
@@ -172,7 +621,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/12/13/cjpm8f7x2001mznfyavapfkwe/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/12/13/cjzmeyv8d0026z5fyfcabm9qi/">展开全文 >></a>
         </p>
       
 
@@ -209,12 +658,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/12/10/cjpm8f7wx001dznfyp641dfl6/">Oracle asm变更物理磁盘</a>
+      <a class="article-title" href="/2018/12/10/cjzmeyv89001zz5fy5jsdiqf1/">Oracle asm变更物理磁盘</a>
     </h1>
   
 
         
-        <a href="/2018/12/10/cjpm8f7wx001dznfyp641dfl6/" class="archive-article-date">
+        <a href="/2018/12/10/cjzmeyv89001zz5fy5jsdiqf1/" class="archive-article-date">
   	<time datetime="2018-12-10T06:25:18.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-12-10</time>
 </a>
         
@@ -265,7 +714,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/12/10/cjpm8f7wx001dznfyp641dfl6/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/12/10/cjzmeyv89001zz5fy5jsdiqf1/">展开全文 >></a>
         </p>
       
 
@@ -302,12 +751,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/21/cjpm8f7x3001oznfyh7elu12r/">pip 变更阿里源</a>
+      <a class="article-title" href="/2018/11/21/cjzmeyv8c0024z5fyouu0umut/">pip 变更阿里源</a>
     </h1>
   
 
         
-        <a href="/2018/11/21/cjpm8f7x3001oznfyh7elu12r/" class="archive-article-date">
+        <a href="/2018/11/21/cjzmeyv8c0024z5fyouu0umut/" class="archive-article-date">
   	<time datetime="2018-11-21T05:31:46.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-21</time>
 </a>
         
@@ -339,7 +788,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/21/cjpm8f7x3001oznfyh7elu12r/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/21/cjzmeyv8c0024z5fyouu0umut/">展开全文 >></a>
         </p>
       
 
@@ -376,12 +825,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7w5000kznfyx6muedlw/">Linux-使用ntp服务时间同步</a>
+      <a class="article-title" href="/2018/11/13/cjzmeyv7x001bz5fy1e1rvnsk/">Linux-使用ntp服务时间同步</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjpm8f7w5000kznfyx6muedlw/" class="archive-article-date">
+        <a href="/2018/11/13/cjzmeyv7x001bz5fy1e1rvnsk/" class="archive-article-date">
   	<time datetime="2018-11-13T08:59:58.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -446,7 +895,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7w5000kznfyx6muedlw/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjzmeyv7x001bz5fy1e1rvnsk/">展开全文 >></a>
         </p>
       
 
@@ -483,12 +932,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7w0000fznfylxld595l/">Deep learning 使用云GPU主机配置</a>
+      <a class="article-title" href="/2018/11/13/cjzmeyv7b000ez5fy3bbhroor/">Deep learning 使用云GPU主机配置</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjpm8f7w0000fznfylxld595l/" class="archive-article-date">
+        <a href="/2018/11/13/cjzmeyv7b000ez5fy3bbhroor/" class="archive-article-date">
   	<time datetime="2018-11-13T08:08:21.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -555,475 +1004,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7w0000fznfylxld595l/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-Linux-lvm逻辑卷扩展文件系统" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7vx000dznfy9l3ahb7j/">Linux lvm逻辑卷扩展文件系统</a>
-    </h1>
-  
-
-        
-        <a href="/2018/11/13/cjpm8f7vx000dznfy9l3ahb7j/" class="archive-article-date">
-  	<time datetime="2018-11-13T08:06:23.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>lvm扩展文件系统</p>
-<p>增加pv</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pvcreate /dev/sda</span><br></pre></td></tr></table></figure>
-<p>增加vg</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">vgextend cl /dev/sda3</span><br><span class="line"></span><br><span class="line">[root@node04 ~]# vgdisplay </span><br><span class="line">  --- Volume group ---</span><br><span class="line">  VG Name               cl</span><br><span class="line">  System ID             </span><br><span class="line">  Format                lvm2</span><br><span class="line">  Metadata Areas        2</span><br><span class="line">  Metadata Sequence No  6</span><br><span class="line">  VG Access             read/write</span><br><span class="line">  VG Status             resizable</span><br><span class="line">  MAX LV                0</span><br><span class="line">  Cur LV                3</span><br><span class="line">  Open LV               3</span><br><span class="line">  Max PV                0</span><br><span class="line">  Cur PV                2</span><br><span class="line">  Act PV                2</span><br><span class="line">  VG Size               98.99 GiB</span><br><span class="line">  PE Size               4.00 MiB</span><br><span class="line">  Total PE              25342</span><br><span class="line">  Alloc PE / Size       25342 / 98.99 GiB</span><br><span class="line">  Free  PE / Size       0 / 0   </span><br><span class="line">  VG UUID               ZlMYJK-8se1-1FxA-hLQF-BIFK-rlOg-lIK5vN</span><br></pre></td></tr></table></figure>
-<p>增加lv 方法1</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># +10239是Free  PE / Size可以在vgdisplay中查看</span><br><span class="line">lvresize -l +10239 /dev/cl/root</span><br></pre></td></tr></table></figure>
-<p>扩展文件系统</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">xfs_growfs  /dev/cl/root</span><br></pre></td></tr></table></figure>
-<p>增加lv 方法2</p>
-<p>分配到lv扩展文件系统一条命令</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">lvextend -l +100%free -f -r  /dev/vg_webserver/lv_root</span><br></pre></td></tr></table></figure>
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">linux</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7vx000dznfy9l3ahb7j/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-Oracle-asm变更磁盘组恢复数据文件" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7wt0019znfygrmuj3oi/">Oracle asm变更磁盘组恢复数据文件</a>
-    </h1>
-  
-
-        
-        <a href="/2018/11/13/cjpm8f7wt0019znfygrmuj3oi/" class="archive-article-date">
-  	<time datetime="2018-11-13T08:04:37.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>asm磁盘组被公司人员删除导致数据库无法启动</p>
-<p>查看3个数据文件丢失</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">SYS@newznsh1&gt; select file#,error from v$recover_file;</span><br><span class="line"></span><br><span class="line">     FILE# ERROR</span><br><span class="line">---------- -----------------------------------------------------------------</span><br><span class="line">       112 FILE NOT FOUND</span><br><span class="line">       113 FILE NOT FOUND</span><br><span class="line">       114 FILE NOT FOUND</span><br></pre></td></tr></table></figure>
-<p>使用rman进行数据文件恢复</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">run</span><br><span class="line">&#123;</span><br><span class="line">allocate channel c1 type disk maxpiecesize 64g;</span><br><span class="line">allocate channel c2 type disk maxpiecesize 64g;</span><br><span class="line">allocate channel c3 type disk maxpiecesize 64g;</span><br><span class="line">set newname for datafile  112 to  &quot;+DATAVG&quot;;</span><br><span class="line">set newname for datafile  113 to  &quot;+DATAVG&quot;;</span><br><span class="line">set newname for datafile  114 to  &quot;+DATAVG&quot;;</span><br><span class="line">restore datafile 112,113,114;</span><br><span class="line">switch datafile all;</span><br><span class="line">recover datafile 112,113,114;</span><br><span class="line">release channel c1;</span><br><span class="line">release channel c2;</span><br><span class="line">release channel c3;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">oracle</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7wt0019znfygrmuj3oi/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-Cdh-安装spark2" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7v90000znfy7awxith0/">Cdh 安装spark2</a>
-    </h1>
-  
-
-        
-        <a href="/2018/11/13/cjpm8f7v90000znfy7awxith0/" class="archive-article-date">
-  	<time datetime="2018-11-13T08:03:23.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>cdh 5.7 离线安装spark2.1</p>
-<p>官方文档<a href="https://www.cloudera.com/documentation/spark2/latest/topics/spark2_installing.html" target="_blank" rel="noopener">https://www.cloudera.com/documentation/spark2/latest/topics/spark2_installing.html</a></p>
-<p>首先应该先查看版本对应关系</p>
-<table>
-<thead>
-<tr>
-<th>CDS Powered By Apache Spark Version</th>
-<th>CDH Version</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>2.3 Release 3</td>
-<td>CDH 5.9 and any higher CDH 5.x versions</td>
-</tr>
-<tr>
-<td>2.3 Release 2</td>
-<td>CDH 5.9 and any higher CDH 5.x versions</td>
-</tr>
-<tr>
-<td>2.3 Release 1</td>
-<td>Not released due to late bug discovered. If downloaded do not use.</td>
-</tr>
-<tr>
-<td>2.2 Release 2</td>
-<td>CDH 5.8 and any higher CDH 5.x versions</td>
-</tr>
-<tr>
-<td>2.2 Release 1</td>
-<td>CDH 5.8, CDH 5.9, CDH 5.10, CDH 5.11, CDH 5.12, CDH 5.13</td>
-</tr>
-<tr>
-<td>2.1 Release 2</td>
-<td>CDH 5.7, CDH 5.8, CDH 5.9, CDH 5.10, CDH 5.11, CDH 5.12, and any higher CDH 5.x versions</td>
-</tr>
-<tr>
-<td>2.1 Release 1</td>
-<td>CDH 5.7, CDH 5.8, CDH 5.9, CDH 5.10, CDH 5.11, CDH 5.12</td>
-</tr>
-<tr>
-<td>2.0 Release 2</td>
-<td>CDH 5.7, CDH 5.8, CDH 5.9, CDH 5.10, CDH 5.11</td>
-</tr>
-<tr>
-<td>2.0 Release 1</td>
-<td>CDH 5.7 up to 5.7.5, CDH 5.8 up to 5.8.4, CDH 5.9 up to 5.9.1, CDH 5.10.0. Spark 2.0 Release 2 is required for any higher maintenance releases in any of these CDH versions.</td>
-</tr>
-</tbody>
-</table>
-<p><a href="http://archive.cloudera.com/spark2/" target="_blank" rel="noopener">http://archive.cloudera.com/spark2/</a></p>
-<p>下载安装包csd、parcels两种，根据自己的系统选择版本。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">[root@master01 csd]# ll</span><br><span class="line">total 16</span><br><span class="line">-rw-r--r-- 1 cloudera-scm cloudera-scm 15845 Jul 27 14:08 SPARK2_ON_YARN-2.1.0.cloudera2.jar</span><br><span class="line"></span><br><span class="line">[root@master01 parcel-repo]# ll</span><br><span class="line">total 1583104</span><br><span class="line">-rw-r--r-- 1 cloudera-scm cloudera-scm 1448796525 Jul 19 14:44 CDH-5.7.6-1.cdh5.7.6.p0.6-el7.parcel</span><br><span class="line">-rw-r--r-- 1 cloudera-scm cloudera-scm         41 Jul 19 10:55 CDH-5.7.6-1.cdh5.7.6.p0.6-el7.parcel.sha</span><br><span class="line">-rw-r----- 1 cloudera-scm cloudera-scm      55444 Jul 20 11:24 CDH-5.7.6-1.cdh5.7.6.p0.6-el7.parcel.torrent</span><br><span class="line">-rw-r--r-- 1 cloudera-scm cloudera-scm       4650 Feb  5 23:12 manifest.json</span><br><span class="line">-rw-r--r-- 1 cloudera-scm cloudera-scm      49962 Jul 19 17:27 manifest.json.cdh</span><br><span class="line">-rw-r--r-- 1 cloudera-scm cloudera-scm  172161150 Jul 27 14:14 SPARK2-2.1.0.cloudera2-1.cdh5.7.0.p0.171658-el7.parcel</span><br><span class="line">-rw-r--r-- 1 cloudera-scm cloudera-scm         41 Jul 27 14:17 SPARK2-2.1.0.cloudera2-1.cdh5.7.0.p0.171658-el7.parcel.sha</span><br><span class="line">-rw-r----- 1 root         root               6760 Jul 27 14:27 SPARK2-2.1.0.cloudera2-1.cdh5.7.0.p0.171658-el7.parcel.torrent</span><br></pre></td></tr></table></figure>
-<p>重启scm server服务</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">/opt/cm-5.7.6/etc/init.d/cloudera-scm-server reatart</span><br></pre></td></tr></table></figure>
-<p>进入cm web</p>
-<p>点击主机 =&gt; Parcel 找到spark2分发</p>
-<p>分发成功后安装spark2服务</p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">hadoop</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">cdh</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">spark</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7v90000znfy7awxith0/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-Oracle-使用catalog-start-with删除过期备份" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7wv001bznfya05x00st/">Oracle 使用catalog start with删除过期备份</a>
-    </h1>
-  
-
-        
-        <a href="/2018/11/13/cjpm8f7wv001bznfya05x00st/" class="archive-article-date">
-  	<time datetime="2018-11-13T08:01:39.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h2><p>系统磁盘紧张，查看oracle备份文件存在大量过期备份。</p>
-<h2 id="处理记录"><a href="#处理记录" class="headerlink" title="处理记录"></a>处理记录</h2><p>使用rman查看控制文件是否包括元数据</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">-- 经过查看控制文件已经没有对应元数据信息</span><br><span class="line">RMAN&gt; list backup summary;</span><br></pre></td></tr></table></figure>
-<p>使用catalog start with rman备份集直接导入控制文件中</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RMAN&gt; catalog start with &apos;/data01/&apos;;</span><br></pre></td></tr></table></figure>
-<p>删除过期备份</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">RMAN&gt; crosscheck backup;</span><br><span class="line">RMAN&gt; delete noprompt obsolete;</span><br><span class="line">RMAN&gt; delete noprompt expired backup;</span><br></pre></td></tr></table></figure>
-<p>经过删除后，备份集已经删除。剩余arch备份集、control备份未删除</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RMAN&gt; delete backup of archivelog until time &apos;sysdate -40&apos;;</span><br></pre></td></tr></table></figure>
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">oracle</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7wv001bznfya05x00st/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-MongoDB-写安全-Write-Concern" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7wb000qznfy3ygdmi7j/">MongoDB 写安全(Write Concern)</a>
-    </h1>
-  
-
-        
-        <a href="/2018/11/13/cjpm8f7wb000qznfy3ygdmi7j/" class="archive-article-date">
-  	<time datetime="2018-11-13T07:59:50.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>转自 <a href="http://blog.csdn.net/leshami/article/details/52913705" target="_blank" rel="noopener">http://blog.csdn.net/leshami/article/details/52913705</a></p>
-<blockquote>
-<p><a href="http://lib.csdn.net/base/mongodb" target="_blank" rel="noopener">MongoDB</a> Write Concern，简称<a href="http://lib.csdn.net/base/mongodb" target="_blank" rel="noopener">mongodb</a>写入安全机制，是一种客户端设置，用于控制写入安全的级别。Write Concern 描述了MongoDB写入到mongod单实例，副本集，以及分片集群时何时应答给客户端。默认情况下，mongoDB文档增删改都会一直等待<a href="http://lib.csdn.net/base/mysql" target="_blank" rel="noopener">数据库</a>响应(确认写入是否成功)，然后才会继续执行。本文讲述了MongoDB 应答机制及相关参数。</p>
-</blockquote>
-<h2 id="一、MongoDB应答机制"><a href="#一、MongoDB应答机制" class="headerlink" title="一、MongoDB应答机制"></a>一、MongoDB应答机制</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">MongoDB应答机制就是说对于当前数据库的写入成功与否告知客户端(db.getLastError()）。如下：</span><br><span class="line">        mongoDB client发出写入(或更新)请求----&gt;mongoDB Server端写入----&gt;通知客户端已经写入OK</span><br><span class="line">主要分为2种应答机制</span><br><span class="line">        应答式写入(缺省情形，安全写入，适用于数据强一致性场景)</span><br><span class="line">        非应答式写入(非安全写入，适用于数据弱一致性场景)</span><br><span class="line">实现方式</span><br><span class="line">        通过Write Concern来实现，客户端驱动调用db.getLastError()方法，错误返回给客户端</span><br><span class="line">        如果捕获到错误，则可以通过客户端定义的逻辑尝试再次写入或记录到特定日志等</span><br></pre></td></tr></table></figure>
-<h2 id="二、Write-Concern用法"><a href="#二、Write-Concern用法" class="headerlink" title="二、Write Concern用法"></a>二、Write Concern用法</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">&#123; w: &lt;value&gt;, j: &lt;boolean&gt;, wtimeout: &lt;number&gt; &#125;</span><br><span class="line"></span><br><span class="line">w : 该选项要求确认操作已经传播到指定数量的mongod实例或指定标签的mongod实例</span><br><span class="line">        w可选的的值</span><br><span class="line">                &lt;number&gt;</span><br><span class="line">                        w:1(应答式写入)</span><br><span class="line">                                要求确认操作已经传播到指定的单个mongod实例或副本集主实例(缺省为1)</span><br><span class="line">                        w:0(非应答式写入)</span><br><span class="line">                                不返回任何响应，所以无法知道写入是否成功</span><br><span class="line">                                但是对于尝试向已关闭的套接字写入或者网络故障会返回异常信息</span><br><span class="line">                        w:&gt;1(用于副本集环境)</span><br><span class="line">                                该值用于设定写入节点的数目，包括主节点</span><br><span class="line"></span><br><span class="line">        &quot;majority&quot;(大多数)</span><br><span class="line">                适用于集群架构，要求写入操作已经传递到绝大多数投票节点以及主节点后进行应答</span><br><span class="line"></span><br><span class="line">        &lt;tag set&gt;</span><br><span class="line">                要求写入操作已经传递到指定tag标记副本集中的成员后进行应答</span><br><span class="line"></span><br><span class="line">j : 该选项要求确认写操作已经写入journal日志之后应答客户端(需要开启journal功能)</span><br><span class="line">        则在意外重启，宕机等情形下可以通过journal来进行数据恢复</span><br><span class="line">        写入journal操作必须等待直到下次提交日志时完成写入</span><br><span class="line">        为降低延迟，MongoDB可以通过增加commit journal的频率来加快journal写入</span><br><span class="line"></span><br><span class="line">wtimeout:</span><br><span class="line">        该选项指定一个时间限制,以防止写操作无限制被阻塞导致无法应答给客户端</span><br><span class="line">        wtimeout的单位为ms，当w值大于1时生效，该参数即仅适用于集群环境</span><br><span class="line">        当某个节点写入时超出指定wtimeout之后，mongod将返回一个错误</span><br><span class="line">        在捕获到超时之前，mongod并不会撤销其他节点已成功完成的写入</span><br><span class="line">        wtimeout值为0时等同于没有配置wtimeout选项，容易导致由于某个节点挂起而无法应答</span><br><span class="line"></span><br><span class="line">对于单实例应答的情形，是将数据写入到内存后开始应答，除非j:true，则保证掉电后不会丢失数据</span><br></pre></td></tr></table></figure>
-<h2 id="三、几种不用应答模式图示说明"><a href="#三、几种不用应答模式图示说明" class="headerlink" title="三、几种不用应答模式图示说明"></a>三、几种不用应答模式图示说明</h2><h3 id="1、非应答式写入图示"><a href="#1、非应答式写入图示" class="headerlink" title="1、非应答式写入图示"></a>1、非应答式写入图示</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">MongoDB不对客户端进行应答，驱动会检查套接字，网络错误等。</span><br><span class="line">mongos&gt; db.version()</span><br><span class="line">3.2.9</span><br><span class="line">mongos&gt; db.version()</span><br><span class="line">3.2.9</span><br><span class="line">mongos&gt; db</span><br><span class="line">test</span><br><span class="line">mongos&gt; db.blogs.insert(&#123;ename:&quot;leshami&quot;,url:&quot;http://blog.csdn.net/leshami&quot;&#125;,&#123;writeConcern:&#123;w:0&#125;&#125;)</span><br><span class="line">WriteResult(&#123; &#125;)   //此处应答为空</span><br><span class="line"></span><br><span class="line">mongos&gt; db.blogs.find(&#123;&#125;,&#123;_id:0&#125;)</span><br><span class="line">&#123; &quot;ename&quot; : &quot;leshami&quot;, &quot;url&quot; : &quot;http://blog.csdn.net/leshami&quot; &#125;</span><br></pre></td></tr></table></figure>
-<p><a href="http://img.blog.csdn.net/20161024172337968" target="_blank" rel="noopener"><img src="http://img.blog.csdn.net/20161024172337968" alt="这里写图片描述"></a></p>
-<h3 id="2、应答式写入图示"><a href="#2、应答式写入图示" class="headerlink" title="2、应答式写入图示"></a>2、应答式写入图示</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">应答式写入是默认值</span><br><span class="line">MongoDB会在收到写入操作并且确认该操作在内存中应用后进行应答，但不会确认数据是否已写入磁盘</span><br><span class="line">同时允许客户端捕捉网络、重复key等等错误</span><br><span class="line"></span><br><span class="line">mongos&gt; db.blogs.insert(&#123;ename:&quot;john&quot;,url:&quot;http://blog.csdn.net/john&quot;&#125;,&#123;writeConcern:&#123;w:1&#125;&#125;)</span><br><span class="line">WriteResult(&#123; &quot;nInserted&quot; : 1 &#125;)    //此处应答信息显示为1个文档已插入</span><br><span class="line"></span><br><span class="line">mongos&gt; db.blogs.find(&#123;&#125;,&#123;_id:0&#125;)</span><br><span class="line">&#123; &quot;ename&quot; : &quot;leshami&quot;, &quot;url&quot; : &quot;http://blog.csdn.net/leshami&quot; &#125;</span><br><span class="line">&#123; &quot;ename&quot; : &quot;john&quot;, &quot;url&quot; : &quot;http://blog.csdn.net/john&quot; &#125;</span><br></pre></td></tr></table></figure>
-<p><a href="http://img.blog.csdn.net/20161024172424766" target="_blank" rel="noopener"><img src="http://img.blog.csdn.net/20161024172424766" alt="这里写图片描述"></a></p>
-<h3 id="3、带journal应答式写入图示"><a href="#3、带journal应答式写入图示" class="headerlink" title="3、带journal应答式写入图示"></a>3、带journal应答式写入图示</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">确认写操作已经写入journal日志之后应答客户端，必须允许了日志功能，才能生效。</span><br><span class="line">写入journal操作必须等待直到下次提交日志时完成写入</span><br><span class="line">提供通过journal来进行数据恢复</span><br></pre></td></tr></table></figure>
-<p><a href="http://img.blog.csdn.net/20161024172513517" target="_blank" rel="noopener"><img src="http://img.blog.csdn.net/20161024172513517" alt="这里写图片描述"></a></p>
-<h3 id="4、副本集应答写入图示"><a href="#4、副本集应答写入图示" class="headerlink" title="4、副本集应答写入图示"></a>4、副本集应答写入图示</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">对于使用副本集的场景，缺省情况下仅仅从主(首选)节点进行应答</span><br><span class="line">建议修改缺省的应答情形为特定数目或者majority来保证数据的可靠</span><br><span class="line">如下示例，w值为2，超时为5s</span><br><span class="line">        db.products.insert(</span><br><span class="line">           &#123; item: &quot;envelopes&quot;, qty : 100, type: &quot;Clasp&quot; &#125;,</span><br><span class="line">           &#123; writeConcern: &#123; w: 2, wtimeout: 5000 &#125; &#125;</span><br><span class="line">        )       </span><br><span class="line">如果不希望每次在增删改时添加writeConcern，可以通过设置settings.getLastErrorDefaults</span><br><span class="line">如下示例，</span><br><span class="line">        cfg = rs.conf()</span><br><span class="line">        cfg.settings = &#123;&#125;</span><br><span class="line">        cfg.settings.getLastErrorDefaults = &#123; w: &quot;majority&quot;, wtimeout: 5000 &#125;</span><br><span class="line">        rs.reconfig(cfg)</span><br></pre></td></tr></table></figure>
-<p><a href="http://img.blog.csdn.net/20161024173434123" target="_blank" rel="noopener"><img src="http://img.blog.csdn.net/20161024173434123" alt="这里写图片描述"></a></p>
-<h2 id="四、小结"><a href="#四、小结" class="headerlink" title="四、小结"></a>四、小结</h2><p>1、write concern用于控制写入安全的级别，可以分为应答式写入以及非应答式写入<br>2、write concern是一个性能和数据强一致性的权衡，应根据业务场景进行设定<br>3、对于强一致性场景，建议w&gt;1或者等于majority，以及journal为true，否则w=0<br>4、在副本集的情形下，建议通过配置文件来修改w以及设置wtimeout，以避免由于某个节点挂起导致无法应答</p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">mongodb</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7wb000qznfy3ygdmi7j/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjzmeyv7b000ez5fy3bbhroor/">展开全文 >></a>
         </p>
       
 
@@ -1067,7 +1048,7 @@
   <div class="outer">
     <div id="footer-info">
     	<div class="footer-left">
-    		&copy; 2018 Xi Wang
+    		&copy; 2019 Xi Wang
     	</div>
       	<div class="footer-right">
       		<a href="http://hexo.io/" target="_blank">Hexo</a>  Theme <a href="https://github.com/litten/hexo-theme-yilia" target="_blank">Yilia</a> by Litten
@@ -1162,19 +1143,7 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color2">docker</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">ceph</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">kubernetes</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">linux</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1182,11 +1151,39 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color2">docker</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">linux</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">mongodb</a>
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">kubernetes</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">big data</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">oracle</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">alluxio</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">brew</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">hive</a>
               </li>
              
               <li class="article-tag-list-item">

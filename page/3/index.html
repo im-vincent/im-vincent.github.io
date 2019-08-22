@@ -152,6 +152,788 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-Ceph-CRUSH算法" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/11/13/cjzmeyv7p000uz5fy76ubg8x2/">Ceph CRUSH算法</a>
+    </h1>
+  
+
+        
+        <a href="/2018/11/13/cjzmeyv7p000uz5fy76ubg8x2/" class="archive-article-date">
+  	<time datetime="2018-11-13T07:45:54.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <blockquote>
+<p>转自<a href="http://xuxiaopang.com/" target="_blank" rel="noopener">徐小胖’blog</a></p>
+<p>可能会添加自己的理解或者其他，请自行过滤。</p>
+</blockquote>
+<h2 id="引言"><a href="#引言" class="headerlink" title="引言"></a>引言</h2><blockquote>
+<p>那么问题来了，把一份数据存到一群Server中分几步？</p>
+</blockquote>
+<p>Ceph的答案是：两步。</p>
+<ol>
+<li>计算PG</li>
+<li>计算OSD</li>
+</ol>
+<h2 id="计算PG"><a href="#计算PG" class="headerlink" title="计算PG"></a>计算PG</h2><p>首先，要明确Ceph的一个规定：在Ceph中，一切皆对象。</p>
+<p>不论是视频，文本，照片等一切格式的数据，Ceph统一将其看作是对象，因为追其根源，所有的数据都是二进制数据保存于磁盘上，所以每一份二进制数据都看成一个对象，不以它们的格式来区分他们。</p>
+<p>那么用什么来区分两个对象呢？<strong>对象名</strong>。也就是说，每个不同的对象都有不一样的对象名。于是，开篇的问题就变成了：</p>
+<blockquote>
+<p>把一个对象存到一群Server中分几步？</p>
+</blockquote>
+<p>这里的一群Server，由Ceph组织成一个集群，这个集群由若干的磁盘组成，也就是由若干的OSD组成。于是，继续简化问题：</p>
+<blockquote>
+<p>把一个对象存到一堆OSD中分几步?</p>
+</blockquote>
+<h2 id="Ceph中的逻辑层"><a href="#Ceph中的逻辑层" class="headerlink" title="Ceph中的逻辑层"></a>Ceph中的逻辑层</h2><p>Ceph为了保存一个对象，对上构建了一个逻辑层，也就是池(pool)，用于保存对象，这个池的翻译很好的解释了pool的特征，如果把pool比喻成一个中国象棋棋盘，那么保存一个对象的过程就类似于把一粒芝麻放置到棋盘上。</p>
+<p><a href="http://ww1.sinaimg.cn/large/6e46250bly1fezuxxovkzj20m80h90zs.jpg" target="_blank" rel="noopener"><img src="http://ww1.sinaimg.cn/large/6e46250bly1fezuxxovkzj20m80h90zs.jpg" alt="img"></a></p>
+<p>Pool再一次进行了细分，即将一个pool划分为若干的PG(归置组 Placement Group)，这类似于棋盘上的方格，所有的方格构成了整个棋盘，也就是说所有的PG构成了一个pool。</p>
+<blockquote>
+<p>Ceph 把客户端数据保存为存储池内的对象。通过使用 CRUSH 算法， Ceph 可以计算出哪个归置组（PG）应该持有指定的对象(Object)，然后进一步计算出哪个 OSD 守护进程持有该归置组。 CRUSH 算法使得 Ceph 存储集群能够动态地伸缩、再均衡和修复</p>
+<ul>
+<li>Pool 棋盘</li>
+<li>Placement Group 棋盘格</li>
+<li>Object 棋子</li>
+</ul>
+</blockquote>
+<p>现在需要解决的问题是，对象怎么知道要保存到哪个PG上，假定这里我们的pool名叫rbd，共有256个PG，给每个PG编个号分别叫做<code>0x0, 0x1, ...0xF, 0x10, 0x11... 0xFE, 0xFF</code>。</p>
+<p>要解决这个问题，我们先看看我们拥有什么，1，不同的对象名。2，不同的PG编号。这里就可以引入Ceph的计算方法了 : HASH。</p>
+<p>对于对象名分别为<code>bar</code>和<code>foo</code>的两个对象，对他们的对象名进行计算即:</p>
+<ul>
+<li>HASH(‘bar’) = 0x3E0A4162</li>
+<li>HASH(‘foo’) = 0x7FE391A0</li>
+<li>HASH(‘bar’) = 0x3E0A4162</li>
+</ul>
+<p>对对象名进行HASH后，得到了一串十六进制输出值，也就是说通过HASH我们将一个对象名转化成了一串数字，那么上面的第一行和第三行是一样的有什么意义？ 意义就是对于一个同样的对象名，计算出来的结果永远都是一样的，但是HASH算法的确将对象名计算得出了一个随机数。</p>
+<p>有了这个输出，我们使用小学就会的方法：求余数！用随机数除以PG的总数256，得到的余数一定会落在[0x0, 0xFF]之间，也就是这256个PG中的某一个：</p>
+<ul>
+<li>0x3E0A4162 % 0xFF ===&gt; 0x62</li>
+<li>0x7FE391A0 % 0xFF ===&gt; 0xA0</li>
+</ul>
+<p>于是乎，对象<code>bar</code>保存到编号为<code>0x62</code>的PG中，对象<code>foo</code>保存到编号为<code>0xA0</code>的PG中。对象<code>bar</code>永远都会保存到PG 0x62中！ 对象<code>foo</code>永远都会保存到PG 0xA0中！</p>
+<p>现在又来了一亿个对象，他们也想知道自己会保存到哪个PG中，Ceph说：“自己算”。于是这一亿个对象，各自对自己对象名进行HASH，得到输出后除以PG总数得到的余数就是要保存的PG。</p>
+<p>求余的好处就是对象数量规模越大，每个PG分布的对象数量就越平均。</p>
+<p>所以每个对象自有名字开始，他们要保存到的PG就已经确定了。</p>
+<p>那么爱思考的小明同学就会提出一个问题，难道不管对象的高矮胖瘦都是一样的使用这种方法计算PG吗，答案是，YES! 也就是说Ceph不区分对象的真实大小内容以及任何形式的格式，只认对象名。毕竟当对象数达到百万级时，对象的分布从宏观上来看还是平均的。</p>
+<p>这里给出更Ceph一点的说明，实际上在Ceph中，存在着多个pool，每个pool里面存在着若干的PG，如果两个pool里面的PG编号相同，Ceph怎么区分呢? 于是乎，Ceph对每个pool进行了编号，比如刚刚的rbd池，给予编号0，再建一个pool就给予编号1，那么在Ceph里，PG的实际编号是由<code>pool_id+.+PG_id</code>组成的，也就是说，刚刚的<code>bar</code>对象会保存在<code>0.62</code>这个PG里，<code>foo</code>这个对象会保存在<code>0.A0</code>这个PG里。其他池里的PG名称可能为<code>1.12f, 2.aa1,10.aa1</code>等。</p>
+<h2 id="Ceph中的物理层"><a href="#Ceph中的物理层" class="headerlink" title="Ceph中的物理层"></a>Ceph中的物理层</h2><p>理解了刚刚的逻辑层，我们再看一下Ceph里的物理层，对下，也就是我们若干的服务器上的磁盘，通常，Ceph将一个磁盘看作一个OSD(实际上，OSD是管理一个磁盘的程序)，于是物理层由若干的OSD组成，我们的最终目标是将对象保存到磁盘上，在逻辑层里，对象是保存到PG里面的，那么现在的任务就是<code>打通PG和OSD之间的隧道</code>。PG相当于一堆余数相同的对象的组合，PG把这一部分对象打了个包，现在我们需要把很多的包平均的安放在各个OSD上，这就是CRUSH算法所要做的事情：<code>CRUSH计算PG-&gt;OSD的映射关系</code>。</p>
+<p>加上刚刚的对象映射到PG的方法，我们将开篇的两步表示成如下的两个计算公式：</p>
+<ul>
+<li>池ID + HASH(‘对象名’) % pg_num ===&gt; PG_ID</li>
+<li>CRUSH(PG_ID) ===&gt; OSD</li>
+</ul>
+<h2 id="使用HASH代替CRUSH？"><a href="#使用HASH代替CRUSH？" class="headerlink" title="使用HASH代替CRUSH？"></a>使用HASH代替CRUSH？</h2><p>在讨论CRUSH算法之前，我们来做一点思考，可以发现，上面两个计算公式有点类似，为何我们不把</p>
+<ul>
+<li><code>CRUSH(PG_ID) ===&gt; OSD</code><br>改为</li>
+<li><code>HASH(PG_ID) %OSD_num ===&gt; OSD</code></li>
+</ul>
+<p>我可以如下几个由此假设带来的副作用：</p>
+<ul>
+<li>如果挂掉一个OSD，<code>OSD_num-1</code>，于是所有的<code>PG % OSD_num</code>的余数都会变化，也就是说这个PG保存的磁盘发生了变化，对这最简单的解释就是，这个PG上的数据要从一个磁盘全部迁移到另一个磁盘上去，一个优秀的存储架构应当在磁盘损坏时使得数据迁移量降到最低，CRUSH可以做到。</li>
+<li>如果保存多个副本，我们希望得到多个OSD结果的输出，HASH只能获得一个，但是CRUSH可以获得任意多个。</li>
+<li>如果增加OSD的数量，OSD_num增大了，同样会导致PG在OSD之间的胡乱迁移，但是CRUSH可以保证数据向新增机器均匀的扩散。</li>
+</ul>
+<p>所以HASH只适用于一对一的映射关系计算，并且两个映射组合(对象名和PG总数)不能变化，因此这里的假设不适用于PG-&gt;OSD的映射计算。因此，这里开始引入CRUSH算法。</p>
+<h2 id="引入CRUSH算法"><a href="#引入CRUSH算法" class="headerlink" title="引入CRUSH算法"></a>引入CRUSH算法</h2><p>千呼万唤始出来，终于开始讲CRUSH算法了，如果直接讲Sage的博士论文或者<code>crush.c</code>的代码的话，可能会十分苦涩难懂，所以我决定尝试大话一把CRUSH，希望能让没有接触过CRUSH的同学也能对其有所理解。</p>
+<p>首先来看我们要做什么：</p>
+<ul>
+<li>把已有的PG_ID映射到OSD上，有了映射关系就可以把一个PG保存到一个磁盘上。</li>
+<li>如果我们想保存三个副本，可以把一个PG映射到三个不同的OSD上，这三个OSD上保存着一模一样的PG内容。</li>
+</ul>
+<p>再来看我们有了什么：</p>
+<ul>
+<li>互不相同的PG_ID。</li>
+<li>如果给OSD也编个号，那么就有了互不相同的OSD_ID。</li>
+<li>每个OSD最大的不同的就是它们的容量，即4T还是800G的容量，我们将每个OSD的容量又称为OSD的权重(weight)，规定4T权重为4，800G为0.8，也就是以T为单位的值。</li>
+</ul>
+<p>现在问题转化为：如何将PG_ID映射到有各自权重的OSD上。这里我直接使用CRUSH里面采取的<code>Straw</code>算法，翻译过来就是抽签，说白了就是挑个最长的签，这里的签指的是OSD的权重。</p>
+<p>那么问题就来了，总不至于每次都挑容量最大的OSD吧，这不分分钟都把数据存满那个最大的 OSD了吗？是的，所以在挑之前先把这些OSD<code>搓一搓</code>，这里直接介绍CRUSH的方法，如下图(可忽视代码直接看文字)：</p>
+<p><a href="http://www.xuxiaopang.com/images/1478244507156.png" target="_blank" rel="noopener"><img src="http://www.xuxiaopang.com/images/1478244507156.png" alt="Alt text"></a></p>
+<ul>
+<li>CRUSH_HASH( PG_ID, OSD_ID, r ) ===&gt; draw</li>
+<li>( draw &amp;0xffff ) * osd_weight ===&gt; osd_straw</li>
+<li>pick up high_osd_straw</li>
+</ul>
+<p>第一行，我们姑且把r当做一个常数，第一行实际上就做了搓一搓的事情:将PG_ID, OSD_ID和r一起当做CRUSH_HASH的输入，求出一个十六进制输出，这和HASH(对象名)完全类似，只是多了两个输入。所以需要强调的是，对于相同的三个输入，计算得出的<code>draw</code>的值是一定相同的。</p>
+<p>这个<code>draw</code>到底有啥用？其实，CRUSH希望得到一个随机数，也就是这里的<code>draw</code>，然后拿这个随机数去乘以OSD的权重，这样把随机数和OSD的权重搓在一起，就得到了每个OSD的实际签长，而且每个签都不一样长(极大概率)，就很容易从中挑一个最长的。</p>
+<p>说白了，CRUSH希望<code>随机</code>挑一个OSD出来，但是还要满足权重越大的OSD被挑中的概率越大，为了达到随机的目的，它在挑之前让每个OSD都拿着自己的权重乘以一个随机数，再取乘积最大的那个。那么这里我们再定个小目标：挑个一亿次！从宏观来看，同样是乘以一个随机数，在样本容量足够大之后，这个随机数对挑中的结果不再有影响，起决定性影响的是OSD的权重，也就是说，OSD的权重越大，宏观来看被挑中的概率越大。</p>
+<p>这里再说明下CRUSH造出来的随机数<code>draw</code>，前文可知，对于常量输入，一定会得到一样的输出，所以这并不是真正的随机，所以说，CRUSH是一个<code>伪随机</code>算法。下图是<code>CRUSH_HASH</code>的代码段，我喜欢叫它搅拌搅拌再搅拌得出一个随机数:</p>
+<p><a href="http://www.xuxiaopang.com/images/1478244378743.png" target="_blank" rel="noopener"><img src="http://www.xuxiaopang.com/images/1478244378743.png" alt="Alt text"></a></p>
+<p>如果看到这里你已经被搅晕了，那让我再简单梳理下PG选择一个OSD时做的事情：</p>
+<ul>
+<li>给出一个PG_ID，作为CRUSH_HASH的输入。</li>
+<li>CRUSH_HASH(PG_ID, OSD_ID, r) 得出一个随机数(重点是随机数，不是HASH)。</li>
+<li>对于所有的OSD用他们的权重乘以每个OSD_ID对应的随机数，得到乘积。</li>
+<li>选出乘积最大的OSD。</li>
+<li>这个PG就会保存到这个OSD上。</li>
+</ul>
+<p>现在趁热打铁，解决一个PG映射到多个OSD的问题，还记得那个常量<code>r</code>吗？我们把<code>r+1</code>，再求一遍随机数，再去乘以每个OSD的权重，再去选出乘积最大的OSD，如果和之前的OSD编号不一样，那么就选中它，如果和之前的OSD编号一样的话，那么再把<code>r+2</code>，再次选一次，直到选出我们需要的三个不一样编号的OSD为止！</p>
+<p>当然实际选择过程还要稍微复杂一点，我这里只是用最简单的方法来解释CRUSH在选择OSD的时候所做的事情。</p>
+<p>下面我们来举个例子，假定我们有6个OSD，需要从中选出三个副本：</p>
+<table>
+<thead>
+<tr>
+<th>osd_id</th>
+<th>weight</th>
+<th>CRUSH_HASH</th>
+<th>(CRUSH_HASH &amp; 0xffff)* weight</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>osd.0</td>
+<td>4</td>
+<td>0xC35E90CB</td>
+<td>0x2432C</td>
+</tr>
+<tr>
+<td>osd.1</td>
+<td>4</td>
+<td>0xA67DE680</td>
+<td><strong>0x39A00</strong></td>
+</tr>
+<tr>
+<td>osd.2</td>
+<td>4</td>
+<td>0xF9B1B224</td>
+<td>0x2C890</td>
+</tr>
+<tr>
+<td>osd.3</td>
+<td>4</td>
+<td>0x42454470</td>
+<td>0x111C0</td>
+</tr>
+<tr>
+<td>osd.4</td>
+<td>4</td>
+<td>0xE950E2F9</td>
+<td>0x38BE4</td>
+</tr>
+<tr>
+<td>osd.5</td>
+<td>4</td>
+<td>0x8A844538</td>
+<td>0x114E0</td>
+</tr>
+</tbody>
+</table>
+<p>这是<code>r = 0</code>的情况，这时候，我们选出<code>(CRUSH_HASH &amp; 0xFFFF) * weight</code>的值最大的一个，也就是<code>osd.1</code>的<code>0x39A00</code>,这就是我们选出的第一个OSD。<br>然后，我们再让<code>r = 1</code>，再生成一组<code>CRUSH_HASH</code>的随机值，乘以OSD的weight，再取一个最大的得到第二个OSD，依此得到第三个OSD，如果在此过程中，选中了相同的OSD，那么将<code>r</code>再加一，生成一组随机值，再选一次，直到选中三个OSD为止。</p>
+<h2 id="CRUSH算法的应用"><a href="#CRUSH算法的应用" class="headerlink" title="CRUSH算法的应用"></a>CRUSH算法的应用</h2><p>理解了上面CRUSH选择OSD的过程，我们就很容易进一步将CRUSH算法结合实际结构，这里给出Sage在他的博士论文中画的一个树状结构图：<br><a href="http://www.xuxiaopang.com/images/1478486778573.png" target="_blank" rel="noopener"><img src="http://www.xuxiaopang.com/images/1478486778573.png" alt="Alt text"></a></p>
+<p>最下面的蓝色长条可以看成一个个主机，里面的灰色圆柱形可以看成一个个OSD，紫色的cabinet可以也就是一个个机柜， 绿色的row可以看成一排机柜，顶端的root是我们的根节点，没有实际意义，你可以把它看成一个数据中心的意思，也可以看成一个机房的意思，不过只是起到了一个树状结构的根节点的作用。</p>
+<p>基于这样的结构选择OSD，我们提出了新的要求：</p>
+<ul>
+<li>一共选出三个OSD。</li>
+<li>这三个OSD需要都位于一个row下面。</li>
+<li>每个cabinet内至多有一个OSD。</li>
+</ul>
+<p>这样的要求，如果用上一节的CRUSH选OSD的方法，不能满足二三两个要求，因为OSD的分布是随机的。</p>
+<p>那么要完成这样的要求，先看看我们现在有什么：</p>
+<ul>
+<li>每个OSD的weight。</li>
+<li>每个主机也可以有一个weight，这个weight由主机内的所有OSD的weight累加而得。</li>
+<li>每个cabinet的weight由所有主机的weight累加而得，其实就是这个cabinet下的所有OSD的权重之和。</li>
+<li>同理推得每个row的weight有cabinet累加而得。</li>
+<li>root的weight其实就是所有的OSD的权重之和。</li>
+</ul>
+<p>所以在这棵树状结构中，每个节点都有了自己的权重，每个节点的权重由<code>下一层</code>节点的权重累加而得，因此根节点root的权重就是这个集群所有的OSD的权重之和，那么有了这么多权重之后，我们怎么选出那三个OSD呢？</p>
+<p>仿照CRUSH选OSD的方法：</p>
+<ul>
+<li>CRUSH从root下的所有的row中选出一个row。</li>
+<li>在刚刚的一个row下面的所有cabinet中，CRUSH选出三个cabinet。</li>
+<li>在刚刚的三个cabinet下面的所有OSD中，CRUSH分别选出一个OSD。</li>
+</ul>
+<p>因为每个row都有自己的权重，所以CRUSH选row的方法和选OSD的方法完全一样，用row的权重乘以一个随机数，取最大。然后在这个row下面继续选出三个cabinet，再在每个cabinet下面选出一个OSD。</p>
+<p>这样做的根本意义在于，将数据平均分布在了这个集群里面的所有OSD上，如果两台机器的权重是16：32，那么这两台机器上分布的数据量也是1：2。同时，这样选择做到了三个OSD分布在三个不同的cabinet上。</p>
+<p>那么结合图例这里给出CRUSH算法的流程：</p>
+<ul>
+<li>take(root) ============&gt; [root]</li>
+<li>choose(1, row) ========&gt; [row2]</li>
+<li>choose(3, cabinet) =====&gt; [cab21, cab23, cab24] <em>在[row2]下</em></li>
+<li>choose(1, osd) ========&gt; [osd2107, osd2313, osd2437] <em>在三个cab下</em></li>
+<li>emit ================&gt; [osd2107, osd2313, osd2437]</li>
+</ul>
+<p>这里给出CRUSH算法的两个重要概念：</p>
+<ul>
+<li>BUCKET/OSD : OSD和我们的磁盘一一对应，bucket是除了OSD以外的所有非子叶节点，比如上面的cabinet,row,root等都是。</li>
+<li>RULE ： CRUSH选择遵循一条条选择路径，一个选择路径就是一个rule。</li>
+</ul>
+<p>RULE一般分为三步走 : <code>take</code>–&gt;<code>choose N</code>–&gt;<code>emit</code>。<code>Take</code>这一步负责选择一个根节点，这个根节点不一定是<code>root</code>，也可以是任何一个Bucket。<code>choose N</code>做的就是按照每个Bucket的weight以及每个<code>choose</code>语句选出符合条件的Bucket，并且，<strong>下一个choose的选择对象为上一步得到的结果</strong>。<code>emit</code>就是输出最终结果，相当于出栈。</p>
+<p>这里再举个简单的例子，也就是我们最常见的三个主机每个主机三个OSD的结构：<br><a href="http://www.xuxiaopang.com/images/1478497045877.png" target="_blank" rel="noopener"><img src="http://www.xuxiaopang.com/images/1478497045877.png" alt="Alt text"></a></p>
+<p>我们要从三个host下面各选出一个OSD，使得三个副本各落在一个host上，这时候，就能保证挂掉两个host，还有一个副本在运行了，那么这样的RULE就形如：</p>
+<ul>
+<li>take(root) ============&gt; [default] 注意是根节点的名字</li>
+<li>choose(3, host) ========&gt; [ceph-1, ceph-2, ceph-3]</li>
+<li>choose(1, osd) ========&gt; [osd.3, osd.1, osd.8]</li>
+<li>emit()</li>
+</ul>
+<p>这里我们来简单总结一下：我们把一个生产环境的机房画成一个树状结构，最下面一层为OSD层，每个OSD有自己的权重，OSD的上面由host/rack/row/room/root等等节点构成，每个节点的权重都是由下层的节点累加而成，CRUSH选择每个节点的算法(straw)都是一样的，用它们的weight乘以一个随机数取其中最大，只是我们通过<code>choose</code>的语句来判断选择的节点类型和个数。最后不要忘了选出来的结果是PG-&gt;OSD的映射，比如:<code>pg 0.a2 ---&gt; [osd.3, osd.1, osd.8]</code>和<code>pg 0.33 ---&gt; [osd.0, osd.5, osd.7]</code>, 每个PG都有自己到OSD的映射关系，这个关系用公式总结就是： <code>CRUSH(pg_id) ---&gt; [osd.a, osd.b ...osd.n]</code>。</p>
+<p>到目前为止，我们已经完成了一份数据保存到一群Server的第二步，再整体回顾下这个流程：</p>
+<ul>
+<li>每个文件都有一个唯一的对象名。</li>
+<li>Pool_ID + HASH(对象名) % PG_NUM 得到PG_ID</li>
+<li>CRUSH(PG_ID) 得到该PG将要保存的OSD组合</li>
+<li>这个对象就会保存到位于这些OSD上的PG上(PG就是磁盘上的目录)</li>
+</ul>
+<p>所以，HASH算法负责计算对象名到PG的映射，CRUSH负责计算PG到OSD的映射，暂且记住这一点。</p>
+<h2 id="CRUSH里的虚虚实实"><a href="#CRUSH里的虚虚实实" class="headerlink" title="CRUSH里的虚虚实实"></a>CRUSH里的虚虚实实</h2><p>现在，我们有三台主机，每台主机上的配置如下：</p>
+<table>
+<thead>
+<tr>
+<th>主机名</th>
+<th>磁盘数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ceph-1</td>
+<td>4T SATA <em>3 800G SSD</em> 1</td>
+</tr>
+<tr>
+<td>ceph-2</td>
+<td>4T SATA <em>3 800G SSD</em> 1</td>
+</tr>
+<tr>
+<td>ceph-3</td>
+<td>4T SATA <em>3 800G SSD</em> 1</td>
+</tr>
+</tbody>
+</table>
+<p>但是想要构建成如下的结构：<br><a href="http://www.xuxiaopang.com/images/1478501078240.png" target="_blank" rel="noopener"><img src="http://www.xuxiaopang.com/images/1478501078240.png" alt="Alt text"></a></p>
+<p>这里我们不能把一台主机劈成两半把SATA盘和SSD各分一半，所以就来介绍下CRUSH里面的虚虚实实，什么是实？所有的OSD都是实实在在的节点！什么是虚？除了OSD之外的所有Bucket都是虚的！</p>
+<p>也就是说，我们可以建立几个Bucket，分别名叫<code>ceph-1-sata</code>,<code>root-sata</code>,<code>ceph-1-ssd</code>, <code>root-ssd</code>，而这些Bucket不需要和实际结构有任何关系，可以看成是我们假想出来的结构，为了达到分层的目的，我们可以假象出任意形式的bucket。</p>
+<p>将所有的SATA添加到<code>ceph-x-sata</code>节点下，再将<code>ceph-x-sata</code>加入到根节点<code>root-sata</code>下，同理处理剩下的三个SSD盘。那么现在可以制定两个RULE：</p>
+<ul>
+<li>rule-sata：<ul>
+<li>take(root-sata)</li>
+<li>choose(3, host)</li>
+<li>choose(1, osd)</li>
+<li>emit</li>
+</ul>
+</li>
+<li>rule-ssd:<ul>
+<li>take(root-ssd)</li>
+<li>choose(3, host)</li>
+<li>choose(1, osd)</li>
+<li>emit</li>
+</ul>
+</li>
+</ul>
+<p>具体的建造指令可以参考之前的<a href="http://xuxiaopang.com/2016/10/10/ceph-full-install-el7-jewel/#%E8%87%AA%E5%AE%9A%E4%B9%89crush" target="_blank" rel="noopener">自定义CRUSH一节</a></p>
+<p>这一节想要说明的是，CRUSH里面的节点除了OSD之外的所有bucket都是可以自定义的，并不需要和实际的物理结构相关，但要记住这样做的目的是将OSD分开，从而建立适当的RULE去选择OSD，所以不要把树状结构建立的脱离了实际情况，比如从三个机器上各挑一个OSD然后放到一个自定义的host节点下，虽然可以这样做，但是是没有意义的，说白了要根据自己的数据分布要求去构建OSD树结构，因为CRUSH只认RULE,并不知道你底层的实际结构！！！</p>
+<p>甚至，你可以像<a href="http://cephnotes.ksperis.com/blog/2015/02/02/crushmap-example-of-a-hierarchical-cluster-map/" target="_blank" rel="noopener">这篇文章</a>里面一样构建出花式的树状结构！一切都在于你的想象力以及集群的应用需求。</p>
+<p><a href="http://www.xuxiaopang.com/images/1478503163385.png" target="_blank" rel="noopener"><img src="http://www.xuxiaopang.com/images/1478503163385.png" alt="Alt text"></a></p>
+<h2 id="Ceph中的CRUSH"><a href="#Ceph中的CRUSH" class="headerlink" title="Ceph中的CRUSH"></a>Ceph中的CRUSH</h2><p>现在再正式介绍CRUSH算法在Ceph中的存在形式，首先导出一个集群的CRUSH Map:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br></pre></td><td class="code"><pre><span class="line">[root@ceph-1 ~]# ceph osd getcrushmap -o /tmp/map</span><br><span class="line">got crush map from osdmap epoch 67</span><br><span class="line">[root@ceph-1 ~]# crushtool -d /tmp/map -o /tmp/map.txt </span><br><span class="line">[root@ceph-1 ~]# cat /tmp/map.txt </span><br><span class="line"># begin crush map</span><br><span class="line">tunable choose_local_tries 0</span><br><span class="line">tunable choose_local_fallback_tries 0</span><br><span class="line">tunable choose_total_tries 50</span><br><span class="line">tunable chooseleaf_descend_once 1</span><br><span class="line">tunable straw_calc_version 1</span><br><span class="line"></span><br><span class="line"># devices</span><br><span class="line">device 0 osd.0</span><br><span class="line">device 1 osd.1</span><br><span class="line">device 2 osd.2</span><br><span class="line">device 3 osd.3</span><br><span class="line">device 4 osd.4</span><br><span class="line">device 5 osd.5</span><br><span class="line">device 6 osd.6</span><br><span class="line">device 7 osd.7</span><br><span class="line">device 8 osd.8</span><br><span class="line"></span><br><span class="line"># types</span><br><span class="line">type 0 osd</span><br><span class="line">type 1 host</span><br><span class="line">type 2 chassis</span><br><span class="line">type 3 rack</span><br><span class="line">type 4 row</span><br><span class="line">type 5 pdu</span><br><span class="line">type 6 pod</span><br><span class="line">type 7 room</span><br><span class="line">type 8 datacenter</span><br><span class="line">type 9 region</span><br><span class="line">type 10 root</span><br><span class="line"></span><br><span class="line"># buckets</span><br><span class="line">host ceph-2 &#123;</span><br><span class="line">	id -2		# do not change unnecessarily</span><br><span class="line">	# weight 5.970</span><br><span class="line">	alg straw</span><br><span class="line">	hash 0	# rjenkins1</span><br><span class="line">	item osd.0 weight 1.990</span><br><span class="line">	item osd.1 weight 1.990</span><br><span class="line">	item osd.2 weight 1.990</span><br><span class="line">&#125;</span><br><span class="line">host ceph-1 &#123;</span><br><span class="line">	id -3		# do not change unnecessarily</span><br><span class="line">	# weight 5.970</span><br><span class="line">	alg straw</span><br><span class="line">	hash 0	# rjenkins1</span><br><span class="line">	item osd.3 weight 1.990</span><br><span class="line">	item osd.4 weight 1.990</span><br><span class="line">	item osd.5 weight 1.990</span><br><span class="line">&#125;</span><br><span class="line">host ceph-3 &#123;</span><br><span class="line">	id -4		# do not change unnecessarily</span><br><span class="line">	# weight 5.970</span><br><span class="line">	alg straw</span><br><span class="line">	hash 0	# rjenkins1</span><br><span class="line">	item osd.6 weight 1.990</span><br><span class="line">	item osd.7 weight 1.990</span><br><span class="line">	item osd.8 weight 1.990</span><br><span class="line">&#125;</span><br><span class="line">root default &#123;</span><br><span class="line">	id -1		# do not change unnecessarily</span><br><span class="line">	# weight 17.910</span><br><span class="line">	alg straw</span><br><span class="line">	hash 0	# rjenkins1</span><br><span class="line">	item ceph-2 weight 5.970</span><br><span class="line">	item ceph-1 weight 5.970</span><br><span class="line">	item ceph-3 weight 5.970</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># rules</span><br><span class="line">rule replicated_ruleset &#123;</span><br><span class="line">	ruleset 0</span><br><span class="line">	type replicated</span><br><span class="line">	min_size 1</span><br><span class="line">	max_size 10</span><br><span class="line">	step take default</span><br><span class="line">	step chooseleaf firstn 0 type host</span><br><span class="line">	step emit</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"># end crush map</span><br><span class="line">[root@ceph-1 ~]#</span><br></pre></td></tr></table></figure>
+<p>简单介绍下几个区域的意义：</p>
+<ul>
+<li><code>tunable</code>：还记得<code>CRUSH_HASH</code>算法中的<code>r</code>变量吗，选择失败的时候这个值经常会自加一，<code>choose_total_tries 50</code>这个50就是用来限定总共失败的次数的，CRUSH算法本身是个递归算法，所以给定一个总共失败次数防止算法无限选择失败。那么如果要选出3副本，选失败了50次只选出一个OSD，那么最终结果是？CRUSH将输出<code>[osd.a， ，]</code>这样的输出，也就是说只给出一个OSD，一般很少会遇到这种情况，除非你要从一个只有一个host的root下面去选出三个host。</li>
+<li><code>devices</code> : 就是所有的OSD的集合。</li>
+<li><code>types</code>: 就是集群内所有的Bucket+OSD的类型的取值范围，所有的Bucket都要属于这些类型，当然，你可以自己增删这里给出的类型，注意<code>type</code>后面的数字必须唯一，因为CRUSH算法在保存类型时不是使用字符串，而是类型对应的数字，所以类型名称在CRUSH眼里是没有意义的。</li>
+<li><code>buckets</code>：就是树上的除了OSD以外的节点，从内容来看可以发现，每个bucket都有向下包含关系，这里看到ID和类型的ID是一样的，CRUSH在底层并不保存节点的名称字符串，而是以数字保存的，值得一提的是，OSD的ID是大于等于零的，bucket的ID是小于零的。还有就是<code>alg straw</code>，因为straw是最公平的选择方法，其实还有三个算法(uniform, tree, list)，因为没有straw综合分高，所以就不介绍了。</li>
+<li><code>rules</code>： 最下面的rule区域是我们修改的最多的地方，<code>replicated_ruleset</code>这个是这个rule的名称，需要唯一，同样CRUSH只保存这个rule的ID，其ID就是<code>ruleset 0</code>这里的<code>0</code>,所以需要添加一个rule的时候需要注意名称和ID都不能重复。下面的三个<code>step</code>就是RULE的三步走策略，里面具体的参数我就不再赘述，可以<a href="http://docs.ceph.com/docs/master/rados/operations/crush-map/" target="_blank" rel="noopener">参考官方文档的这一章</a>。</li>
+</ul>
+<p>还是简单的讲解下这句<code>step chooseleaf firstn 0 type host</code>， 实际的RULE里面分为<code>choose</code>和<code>chooseleaf</code>两种，其中<code>choose</code>用于选择多个Bucket，Bucket是最终选择结果，相当于<code>choose(3, Bucket)</code>。<code>chooseleaf</code>用于选择多个Bucket，并在这些Bucket下各选出一个OSD，OSD是最终选择结果，相当于<code>choose(3, Bucket) + choose(1, osd)</code>。<code>type</code>后面的<code>host</code>就是要选择的Bucket类型。<code>firstn</code>后面的<code>0</code>,是选择的副本数，<code>0</code>等于副本数，也就是3的意思，具体参考官方文档的解释。</p>
+<p>所以Sage论文中的图，对应到实际CRUSH的RULE就是：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">rule Sage_Paper &#123;</span><br><span class="line">	ruleset 0</span><br><span class="line">	type replicated</span><br><span class="line">	min_size 1</span><br><span class="line">	max_size 10</span><br><span class="line">	step take root</span><br><span class="line">	step choose firstn 1 type row</span><br><span class="line">	step chooseleaf firstn 0 type cabinet</span><br><span class="line">	step emit</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>介绍完了这两步走的核心流程之后，最后再着重强调下<code>计算</code>两字，可以发现，从对象计算PG再到PG计算OSD组合，从头到尾都是通过计算得到最终的映射关系的，但是这些计算不论放在客户端还是服务器端，计算的结果都是相同的，因为里面所谓的随机值都是伪随机，只要传入一样的输入得到的输出结果都是一样的，所以Ceph把计算对象存储位置的任务发放给客户端，实际上，客户端在计算完一个对象需要保存的OSD之后，直接和OSD建立通讯，将数据直接存入OSD中，只要集群的Map没有变化，客户端和服务端计算出来的保存位置都是一样的，所以这大大的降低了服务器端的计算压力。</p>
+<p>本文没有直接介绍CRUSH算法，而是从<code>把一个对象存进Ceph</code>的流程来分析，着重解释了对象到PG的映射，PG到OSD的映射这两个流程，介绍了它们的计算方法。</p>
+<p>最后再给一个别人画的计算路径图，仅供理解。<br><a href="http://www.xuxiaopang.com/images/1478573403493.png" target="_blank" rel="noopener"><img src="http://www.xuxiaopang.com/images/1478573403493.png" alt="Alt text"></a></p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">ceph</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2018/11/13/cjzmeyv7p000uz5fy76ubg8x2/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-Ceph-修改mon相关配置" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/11/13/cjzmeyv6h0003z5fyp3eo6aip/">Ceph 修改mon相关配置</a>
+    </h1>
+  
+
+        
+        <a href="/2018/11/13/cjzmeyv6h0003z5fyp3eo6aip/" class="archive-article-date">
+  	<time datetime="2018-11-13T07:41:52.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="删除一个monitor"><a href="#删除一个monitor" class="headerlink" title="删除一个monitor"></a>删除一个monitor</h3><p>修改配置文件</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># 原配置文件</span><br><span class="line">[ceph@ceph-mon1 my-cluster]$ cat ceph.conf |grep mon</span><br><span class="line">mon_initial_members = ceph-mon1, ceph-mon2, ceph-mon3</span><br><span class="line">mon_host = 10.117.130.173,10.117.130.174,10.117.130.175</span><br><span class="line"></span><br><span class="line"># 删除后的配置文件</span><br><span class="line">[ceph@ceph-mon1 my-cluster]$ cat ceph.conf |grep mon</span><br><span class="line">mon_initial_members = ceph-mon1, ceph-mon2</span><br><span class="line">mon_host = 10.117.130.173,10.117.130.174</span><br></pre></td></tr></table></figure>
+<p>推送配置文件到原节点上（原来是3个mon）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">[ceph@ceph-mon1 my-cluster]$ ceph-deploy --overwrite-conf admin ceph-mon1 ceph-mon2 ceph-mon3   </span><br><span class="line">[ceph_deploy.conf][DEBUG ] found configuration file at: /home/ceph/.cephdeploy.conf</span><br><span class="line">[ceph_deploy.cli][INFO  ] Invoked (1.5.37): /bin/ceph-deploy --overwrite-conf admin ceph-mon1 ceph-mon2 ceph-mon3</span><br><span class="line">[ceph_deploy.cli][INFO  ] ceph-deploy options:</span><br><span class="line">[ceph_deploy.cli][INFO  ]  username                      : None</span><br><span class="line">[ceph_deploy.cli][INFO  ]  verbose                       : False</span><br><span class="line">[ceph_deploy.cli][INFO  ]  overwrite_conf                : True</span><br><span class="line">[ceph_deploy.cli][INFO  ]  quiet                         : False</span><br><span class="line">[ceph_deploy.cli][INFO  ]  cd_conf                       : &lt;ceph_deploy.conf.cephdeploy.Conf instance at 0x1664d88&gt;</span><br><span class="line">[ceph_deploy.cli][INFO  ]  cluster                       : ceph</span><br><span class="line">[ceph_deploy.cli][INFO  ]  client                        : [&apos;ceph-mon1&apos;, &apos;ceph-mon2&apos;, &apos;ceph-mon3&apos;]</span><br><span class="line">[ceph_deploy.cli][INFO  ]  func                          : &lt;function admin at 0x159c848&gt;</span><br><span class="line">[ceph_deploy.cli][INFO  ]  ceph_conf                     : None</span><br><span class="line">[ceph_deploy.cli][INFO  ]  default_release               : False</span><br><span class="line">[ceph_deploy.admin][DEBUG ] Pushing admin keys and conf to ceph-mon1</span><br><span class="line">[ceph-mon1][DEBUG ] connection detected need for sudo</span><br><span class="line">[ceph-mon1][DEBUG ] connected to host: ceph-mon1 </span><br><span class="line">[ceph-mon1][DEBUG ] detect platform information from remote host</span><br><span class="line">[ceph-mon1][DEBUG ] detect machine type</span><br><span class="line">[ceph-mon1][DEBUG ] write cluster configuration to /etc/ceph/&#123;cluster&#125;.conf</span><br><span class="line">[ceph_deploy.admin][DEBUG ] Pushing admin keys and conf to ceph-mon2</span><br><span class="line">[ceph-mon2][DEBUG ] connection detected need for sudo</span><br><span class="line">[ceph-mon2][DEBUG ] connected to host: ceph-mon2 </span><br><span class="line">[ceph-mon2][DEBUG ] detect platform information from remote host</span><br><span class="line">[ceph-mon2][DEBUG ] detect machine type</span><br><span class="line">[ceph-mon2][DEBUG ] write cluster configuration to /etc/ceph/&#123;cluster&#125;.conf</span><br><span class="line">[ceph_deploy.admin][DEBUG ] Pushing admin keys and conf to ceph-mon3</span><br><span class="line">[ceph-mon3][DEBUG ] connection detected need for sudo</span><br><span class="line">[ceph-mon3][DEBUG ] connected to host: ceph-mon3 </span><br><span class="line">[ceph-mon3][DEBUG ] detect platform information from remote host</span><br><span class="line">[ceph-mon3][DEBUG ] detect machine type</span><br><span class="line">[ceph-mon3][DEBUG ] write cluster configuration to /etc/ceph/&#123;cluster&#125;.conf</span><br></pre></td></tr></table></figure>
+<p>使用<code>ceph-deploy</code>删除<code>ceph-mon3</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">[ceph@ceph-mon1 my-cluster]$ ceph-deploy mon destroy ceph-mon3</span><br><span class="line">[ceph_deploy.conf][DEBUG ] found configuration file at: /home/ceph/.cephdeploy.conf</span><br><span class="line">[ceph_deploy.cli][INFO  ] Invoked (1.5.37): /bin/ceph-deploy mon destroy ceph-mon3</span><br><span class="line">[ceph_deploy.cli][INFO  ] ceph-deploy options:</span><br><span class="line">[ceph_deploy.cli][INFO  ]  username                      : None</span><br><span class="line">[ceph_deploy.cli][INFO  ]  verbose                       : False</span><br><span class="line">[ceph_deploy.cli][INFO  ]  overwrite_conf                : False</span><br><span class="line">[ceph_deploy.cli][INFO  ]  subcommand                    : destroy</span><br><span class="line">[ceph_deploy.cli][INFO  ]  quiet                         : False</span><br><span class="line">[ceph_deploy.cli][INFO  ]  cd_conf                       : &lt;ceph_deploy.conf.cephdeploy.Conf instance at 0xe2ef80&gt;</span><br><span class="line">[ceph_deploy.cli][INFO  ]  cluster                       : ceph</span><br><span class="line">[ceph_deploy.cli][INFO  ]  mon                           : [&apos;ceph-mon3&apos;]</span><br><span class="line">[ceph_deploy.cli][INFO  ]  func                          : &lt;function mon at 0xe23398&gt;</span><br><span class="line">[ceph_deploy.cli][INFO  ]  ceph_conf                     : None</span><br><span class="line">[ceph_deploy.cli][INFO  ]  default_release               : False</span><br><span class="line">[ceph_deploy.mon][DEBUG ] Removing mon from ceph-mon3</span><br><span class="line">[ceph-mon3][DEBUG ] connection detected need for sudo</span><br><span class="line">[ceph-mon3][DEBUG ] connected to host: ceph-mon3 </span><br><span class="line">[ceph-mon3][DEBUG ] detect platform information from remote host</span><br><span class="line">[ceph-mon3][DEBUG ] detect machine type</span><br><span class="line">[ceph-mon3][DEBUG ] find the location of an executable</span><br><span class="line">[ceph-mon3][DEBUG ] get remote short hostname</span><br><span class="line">[ceph-mon3][INFO  ] Running command: sudo ceph --cluster=ceph -n mon. -k /var/lib/ceph/mon/ceph-ceph-mon3/keyring mon remove ceph-mon3</span><br><span class="line">[ceph-mon3][WARNIN] removing mon.ceph-mon3 at 10.117.130.175:6789/0, there will be 2 monitors</span><br><span class="line">[ceph-mon3][INFO  ] polling the daemon to verify it stopped</span><br><span class="line">[ceph-mon3][INFO  ] Running command: sudo systemctl stop ceph-mon@ceph-mon3.service</span><br><span class="line">[ceph-mon3][INFO  ] Running command: sudo mkdir -p /var/lib/ceph/mon-removed</span><br><span class="line">[ceph-mon3][DEBUG ] move old monitor data</span><br></pre></td></tr></table></figure>
+<p>通过日志我们可以看到，原数据文件并没有被删除。而是被rename成了mon-removed</p>
+<h3 id="添加一个monitor"><a href="#添加一个monitor" class="headerlink" title="添加一个monitor"></a>添加一个monitor</h3><p>修改配置文件增加新的mon</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[ceph@ceph-mon1 my-cluster]$ cat ceph.conf |grep mon</span><br><span class="line">mon_initial_members = ceph-mon1, ceph-mon2, ceph-mon3</span><br><span class="line">mon_host = 10.117.130.173,10.117.130.174,10.117.130.175</span><br></pre></td></tr></table></figure>
+<p>推送配置文件到原来的2节点上</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ceph-deploy --overwrite-conf admin ceph-mon1 ceph-mon2</span><br></pre></td></tr></table></figure>
+<p>使用<code>ceph-deploy</code>添加ceph-mon3</p>
+<blockquote>
+<p>过程中报错，修改配置文件然后重新同步</p>
+<p>[ceph-mon3][WARNIN] neither <code>public_addr</code> nor <code>public_network</code> keys are defined for monitors</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">[ceph@ceph-mon1 my-cluster]$ ceph-deploy --overwrite-conf mon add ceph-mon3</span><br><span class="line">...</span><br><span class="line">********************************************************************************</span><br><span class="line">[ceph-mon3][INFO  ] monitor: mon.ceph-mon3 is currently at the state of probing</span><br></pre></td></tr></table></figure>
+<h3 id="修改ip"><a href="#修改ip" class="headerlink" title="修改ip"></a>修改ip</h3><p>思路就是把<code>monmap</code>导出然后修改ip，然后再导入。</p>
+<p>monmap导出</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">[ceph@ceph-mon1 my-cluster]$ ceph mon getmap -o /tmp/monmap</span><br><span class="line">got monmap epoch 4</span><br><span class="line">[ceph@ceph-mon1 my-cluster]$ monmaptool --print /tmp/monmap </span><br><span class="line">monmaptool: monmap file /tmp/monmap</span><br><span class="line">epoch 4</span><br><span class="line">fsid 7026190e-2c16-4a84-b7ed-3de95a0a27dd</span><br><span class="line">last_changed 2017-04-24 16:18:01.473298</span><br><span class="line">created 2017-04-19 15:46:13.379737</span><br><span class="line">0: 10.117.130.173:6789/0 mon.ceph-mon1</span><br><span class="line">1: 10.117.130.174:6789/0 mon.ceph-mon2</span><br><span class="line">2: 10.117.130.175:6789/0 mon.ceph-mon3</span><br></pre></td></tr></table></figure>
+<p>如果集群已经失效可以重建<code>monmap</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">[ceph@ceph-mon1 my-cluster]$ cat ceph.conf |grep fsid</span><br><span class="line">fsid = 7026190e-2c16-4a84-b7ed-3de95a0a27dd</span><br><span class="line"></span><br><span class="line"># Now create a new one, just be sure to use the same fsid as your current monmap:</span><br><span class="line">monmaptool --create --add mon.ceph-mon1 10.0.1.1:6789 --add mon.ceph-mon2 10.0.1.2:6789 --add mon.ceph-mon3 10.0.1.3:6789 --fsid 7026190e-2c16-4a84-b7ed-3de95a0a27dd --clobber monmap</span><br><span class="line">monmaptool: monmap file monmap</span><br><span class="line">monmaptool: set fsid to dea89929-963c-4173-9eaf-8e832d6d9dd1</span><br><span class="line">monmaptool: writing epoch 0 to monmap (3 monitors)</span><br><span class="line"></span><br><span class="line">$ monmaptool --print monmap </span><br><span class="line">monmaptool: monmap file monmap</span><br><span class="line">epoch 0</span><br><span class="line">fsid dea89929-963c-4173-9eaf-8e832d6d9dd1</span><br><span class="line">last_changed 2012-07-27 01:18:43.321681</span><br><span class="line">created 2012-07-27 01:18:43.321681</span><br><span class="line">0: 10.0.1.1:6789/0 mon.ceph-mon1</span><br><span class="line">1: 10.0.1.2:6789/0 mon.ceph-mon2</span><br><span class="line">2: 10.0.1.3:6789/0 mon.ceph-mon3</span><br></pre></td></tr></table></figure>
+<p>导入monmap</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">scp monmap mon.ceph-mon2:/tmp/monmap</span><br><span class="line">scp monmap mon.ceph-mon3:/tmp/monmap</span><br><span class="line"></span><br><span class="line"># 3节点分别导入monmap</span><br><span class="line">ceph-mon -i mon.ceph-mon1 --inject-monmap /tmp/monmap</span><br><span class="line">ceph-mon -i mon.ceph-mon2 --inject-monmap /tmp/monmap</span><br><span class="line">ceph-mon -i mon.ceph-mon3 --inject-monmap /tmp/monmap</span><br></pre></td></tr></table></figure>
+<p>同步配置文件，重启进程</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"># 配置文件要先修改成正确的ip地址</span><br><span class="line">ceph-deploy --overwrite-conf admin ceph-mon1 ceph-mon2 ceph-mon3</span><br><span class="line"></span><br><span class="line"># ssh到mon节点 </span><br><span class="line">systemctl start ceph-mon@ceph-mon1.service</span><br><span class="line">systemctl start ceph-mon@ceph-mon2.service</span><br><span class="line">systemctl start ceph-mon@ceph-mon3.service</span><br></pre></td></tr></table></figure>
+<h3 id="mon备份"><a href="#mon备份" class="headerlink" title="mon备份"></a>mon备份</h3><p>思路关闭一个mon，然后打包备份，然后启动mon</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">mkdir -p /backups</span><br><span class="line">systemctl stop ceph-mon@ceph-mon3.service</span><br><span class="line">[root@ceph-mon3 mon]# tar cfz /backups/ceph-mon-backup_`date +%F`.tar.gz /var/lib/ceph/mon</span><br><span class="line">[root@ceph-mon3 mon]# tar cvfzP  /backups/ceph-confbackup_`date +%F`.tar.gz /etc/ceph</span><br><span class="line"></span><br><span class="line">systemctl start ceph-mon@ceph-mon3.service</span><br></pre></td></tr></table></figure>
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">ceph</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2018/11/13/cjzmeyv6h0003z5fyp3eo6aip/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-Linux使用fio测试磁盘" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/11/13/cjzmeyv7f000jz5fys8lravrd/">Linux使用fio测试磁盘</a>
+    </h1>
+  
+
+        
+        <a href="/2018/11/13/cjzmeyv7f000jz5fys8lravrd/" class="archive-article-date">
+  	<time datetime="2018-11-13T07:38:40.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在github的<a href="https://github.com/axboe/fio/blob/master/HOWTO" target="_blank" rel="noopener">HOWTO</a>文档中，作者对所有的配置参数做了详细的解释，当遇到不熟悉的参数时，可以进行查阅。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">bs      :  设置IO请求的块大小,可以给出上下限</span><br><span class="line">           支持对read，write，trim分别进行设置，以逗号隔开</span><br><span class="line">           比如：bs=1k-2k,3k-4k,5k-6k</span><br><span class="line">size    :  文件请求的大小，控制job结束</span><br><span class="line">rw      :  控制读写类型:  read/write/rw/randread/randwrite/randrw</span><br><span class="line">direct  :  1表示绕过buffer，直接作用于设备</span><br><span class="line">ioengine:  io引擎：libaio(异步IO)，syslet等 </span><br><span class="line">iodepth :  异步IO情况下，IO队列的长度</span><br><span class="line">runtime :  执行时间限制，控制job结束</span><br><span class="line">filename:  输出文件或者设备名，eg：/dev/sba</span><br></pre></td></tr></table></figure>
+<p>例子：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">fio -ioengine=libaio -bs=4k -direct=1 -thread -rw=randwrite -size 1G -filename=/dev/rbd0 -iodepth=64 -runtime=60 -name=mytest</span><br></pre></td></tr></table></figure>
+<p>测试目标：</p>
+<ul>
+<li>4k随机读</li>
+<li>4k随机写</li>
+<li>512k顺序写</li>
+</ul>
+<p><a href="http://ww1.sinaimg.cn/large/6e46250bly1feu3ml9yvpj20vw0i8gqt.jpg" target="_blank" rel="noopener"><img src="http://ww1.sinaimg.cn/large/6e46250bly1feu3ml9yvpj20vw0i8gqt.jpg" alt="img"></a></p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color1">linux</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2018/11/13/cjzmeyv7f000jz5fys8lravrd/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-CentOS-7-安装Ceph分布式存储系统" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/11/13/cjzmeyv7a000dz5fyy4ef764w/">CentOS 7 安装分布式存储系统 Ceph</a>
+    </h1>
+  
+
+        
+        <a href="/2018/11/13/cjzmeyv7a000dz5fyy4ef764w/" class="archive-article-date">
+  	<time datetime="2018-11-13T07:29:17.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>关于Ceph的介绍本文不再赘述，可以查看<a href="http://docs.ceph.org.cn/start/intro/" target="_blank" rel="noopener">官方文档</a>进行了解</p>
+<p>Sage Weil读博士的时候开发了这套牛逼的分布式存储系统，最初是奔着高性能分布式文件系统去的，结果云计算风口一来，Ceph重心转向了分布式块存储（Block Storage）和分布式对象存储（Object Storage），现在分布式文件系统CephFS还停在beta阶段。Ceph现在是云计算、虚拟机部署的最火开源存储解决方案，据说有20%的OpenStack部署存储用的都是Ceph的Block Storage。</p>
+<p>Ceph 提供3种存储方式：对象存储，块存储和文件系统，下图展示了Ceph存储集群的架构：</p>
+<p><a href="http://7xl6fl.com1.z0.glb.clouddn.com/%E5%9C%A8CentOS7.1%E4%B8%8A%E5%AE%89%E8%A3%85%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9FCeph_1.png" target="_blank" rel="noopener"><img src="http://7xl6fl.com1.z0.glb.clouddn.com/%E5%9C%A8CentOS7.1%E4%B8%8A%E5%AE%89%E8%A3%85%E5%88%86%E5%B8%83%E5%BC%8F%E5%AD%98%E5%82%A8%E7%B3%BB%E7%BB%9FCeph_1.png" alt="img"></a></p>
+<h1 id="硬件环境准备"><a href="#硬件环境准备" class="headerlink" title="硬件环境准备"></a>硬件环境准备</h1><hr>
+<p>由于条件限制，本文所有实验机器全是虚拟机，共准备了5台虚拟机，其中3台做监控节点（ceph-mon），2台做存储节点（ceph-osd1，ceph-osd2）。</p>
+<p>Ceph要求必须是奇数个监控节点，而且最少3个（自己玩玩的话，1个也是可以的），ceph-adm是可选的，可以把ceph-adm放在monitor上，只不过把ceph-adm单独拿出来架构上看更清晰一些。当然也可以把mon放在 osd上，生产环境下是不推荐这样做的。</p>
+<p><a href="http://ww1.sinaimg.cn/large/6e46250bly1fes2vdud9pj20kq0fidgn.jpg" target="_blank" rel="noopener"><img src="http://ww1.sinaimg.cn/large/6e46250bly1fes2vdud9pj20kq0fidgn.jpg" alt="img"></a></p>
+<ul>
+<li>ADM 服务器硬件配置比较随意，只是用来操作和管理 Ceph；</li>
+<li>MON 服务器1块硬盘用来安装操作系统；</li>
+<li>OSD 服务器上用4块32GB的硬盘做Ceph存储，每个osd对应1块硬盘，每个osd需要1个Journal，所以4块硬盘需要4个Journal，我们用1块64GB硬盘做journal，将硬盘等分成4个区，这样每个区分别对应一个osd硬盘的journal.</li>
+</ul>
+<h1 id="软件环境准备"><a href="#软件环境准备" class="headerlink" title="软件环境准备"></a>软件环境准备</h1><hr>
+<p>所有Ceph集群节点采用CentOS7.2版本（CentOS Linux release 7.2.1511），所有文件系统采用Ceph官方推荐的xfs。</p>
+<p>安装完CentOS后我们需要在每个节点上（包括ceph-adm）做一点基础配置，比如关闭SELINUX、关闭防火墙、同步时间等。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"># 关闭 SELINUX</span><br><span class="line">sed -i &apos;s/SELINUX=enforcing/SELINUX=disabled/g&apos; /etc/selinux/config</span><br><span class="line">setenforce 0</span><br><span class="line"></span><br><span class="line"># 关闭iptables</span><br><span class="line">systemctl stop firewalld</span><br><span class="line">systemctl disable firewalld</span><br><span class="line"></span><br><span class="line"># 安装 EPEL 软件源：</span><br><span class="line">rpm -Uvh https://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-8.noarch.rpm</span><br><span class="line"></span><br><span class="line"># 同步时间</span><br><span class="line">yum -y ntp</span><br><span class="line">ntpdate asia.pool.ntp.org</span><br><span class="line"></span><br><span class="line"># 修改/etc/hosts</span><br><span class="line">cat /etc/hosts</span><br><span class="line">127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4</span><br><span class="line">::1         localhost localhost.localdomain localhost6 localhost6.localdomain6</span><br><span class="line">10.117.130.173 ceph-mon1 </span><br><span class="line">10.117.130.174 ceph-mon2</span><br><span class="line">10.117.130.175 ceph-mon3</span><br><span class="line">10.117.130.145 ceph-osd1</span><br><span class="line">10.117.130.146 ceph-osd2</span><br><span class="line"></span><br><span class="line"># 建立ceph用户</span><br><span class="line">ssh user@ceph-server</span><br><span class="line">sudo useradd -d /home/&#123;username&#125; -m &#123;username&#125;</span><br><span class="line">sudo passwd &#123;username&#125;</span><br><span class="line"></span><br><span class="line"># 添加sudo权限</span><br><span class="line">echo &quot;&#123;username&#125; ALL = (root) NOPASSWD:ALL&quot; | sudo tee /etc/sudoers.d/&#123;username&#125;</span><br><span class="line">sudo chmod 0440 /etc/sudoers.d/&#123;username&#125;</span><br></pre></td></tr></table></figure>
+<p>在每台osd服务器上对4块硬盘进行分区，创建XFS文件系统，对1块用作journal的硬盘分4个区，每个区对应一块硬盘，不需要创建文件系统，留给Ceph自己处理。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"># parted -a optimal --script /dev/sdc -- mktable gpt</span><br><span class="line"># parted -a optimal --script /dev/sdc -- mkpart primary xfs 0% 100%</span><br><span class="line"># mkfs.xfs -f /dev/sdc1</span><br><span class="line">meta-data=/dev/sdc1              isize=256    agcount=4, agsize=1310592 blks</span><br><span class="line">     =                       sectsz=512   attr=2, projid32bit=1</span><br><span class="line">     =                       crc=0        finobt=0</span><br><span class="line">data     =                       bsize=4096   blocks=5242368, imaxpct=25</span><br><span class="line">     =                       sunit=0      swidth=0 blks</span><br><span class="line">naming   =version 2              bsize=4096   ascii-ci=0 ftype=0</span><br><span class="line">log      =internal log           bsize=4096   blocks=2560, version=2</span><br><span class="line">     =                       sectsz=512   sunit=0 blks, lazy-count=1</span><br><span class="line">realtime =none                   extsz=4096   blocks=0, rtextents=0</span><br></pre></td></tr></table></figure>
+<p><del>在生产环境中，每台osd服务器上硬盘远不止4台，以上命令需要对多个硬盘进行处理，重复的操作太多，以后还会陆续增加服务器，写成脚本parted.sh方便操作，其中/dev/sdb|c|d|e分别是4块硬盘，/dev/sdf是用做journal的硬盘：</del></p>
+<blockquote>
+<p>大坑，不要执行，后面解释</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">#!/bin/bash</span><br><span class="line"></span><br><span class="line">set -e</span><br><span class="line">if [ ! -x &quot;/sbin/parted&quot; ]; then</span><br><span class="line">    echo &quot;This script requires /sbin/parted to run!&quot; &gt;&amp;2</span><br><span class="line">    exit 1</span><br><span class="line">fi</span><br><span class="line"></span><br><span class="line">#这段代码已经不需要了，ceph-deploy osd prepare的过程会自动格式化。</span><br><span class="line">#DISKS=&quot;b c d e&quot;</span><br><span class="line">#for i in $&#123;DISKS&#125;; do</span><br><span class="line">#    echo &quot;Creating partitions on /dev/sd$&#123;i&#125; ...&quot;</span><br><span class="line">#    parted -a optimal --script /dev/sd$&#123;i&#125; -- mktable gpt</span><br><span class="line">#    parted -a optimal --script /dev/sd$&#123;i&#125; -- mkpart primary xfs 0% 100%</span><br><span class="line">#    sleep 1</span><br><span class="line">#    #echo &quot;Formatting /dev/sd$&#123;i&#125;1 ...&quot;</span><br><span class="line">#    mkfs.xfs -f /dev/sd$&#123;i&#125;1 &amp;</span><br><span class="line">#done</span><br><span class="line"></span><br><span class="line">JOURNALDISK=&quot;f&quot;</span><br><span class="line">for i in $&#123;JOURNALDISK&#125;; do</span><br><span class="line">    parted -s /dev/sd$&#123;i&#125; mklabel gpt</span><br><span class="line">    parted -s /dev/sd$&#123;i&#125; mkpart primary 0% 25%</span><br><span class="line">    parted -s /dev/sd$&#123;i&#125; mkpart primary 26% 50%</span><br><span class="line">    parted -s /dev/sd$&#123;i&#125; mkpart primary 51% 75%</span><br><span class="line">    parted -s /dev/sd$&#123;i&#125; mkpart primary 76% 100%</span><br><span class="line">done</span><br></pre></td></tr></table></figure>
+<p><del>格式化sdf以后，我们可以使用lsblk查看</del></p>
+<blockquote>
+<p>大坑，不要执行，后面解释</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">[root@ceph-osd1 dev]# lsblk</span><br><span class="line">NAME        MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT</span><br><span class="line">fd0           2:0    1    4K  0 disk </span><br><span class="line">sda           8:0    0   32G  0 disk </span><br><span class="line">├─sda1        8:1    0    1G  0 part /boot</span><br><span class="line">└─sda2        8:2    0   31G  0 part </span><br><span class="line">  ├─cl-root 253:0    0 27.8G  0 lvm  /</span><br><span class="line">  └─cl-swap 253:1    0  3.2G  0 lvm  [SWAP]</span><br><span class="line">sdb           8:16   0   32G  0 disk </span><br><span class="line">sdc           8:32   0   32G  0 disk </span><br><span class="line">sdd           8:48   0   32G  0 disk </span><br><span class="line">sde           8:64   0   32G  0 disk </span><br><span class="line">sdf           8:80   0   64G  0 disk </span><br><span class="line">├─sdf1        8:81   0   16G  0 part </span><br><span class="line">├─sdf2        8:82   0 15.4G  0 part </span><br><span class="line">├─sdf3        8:83   0 15.4G  0 part </span><br><span class="line">└─sdf4        8:84   0 15.4G  0 part </span><br><span class="line">sr0          11:0    1  680M  0 rom</span><br></pre></td></tr></table></figure>
+<p>在ceph-mon上运行ssh-keygen生成ssh key文件，注意passphrase是空，把ssh key拷贝到每一个Ceph节点上：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">[root@ceph-mon1 ~]$ ssh-keygen -t rsa</span><br><span class="line">[root@ceph-mon1 ~]# ssh-copy-id  ceph@ceph-mon1</span><br><span class="line">[root@ceph-mon1 ~]# ssh-copy-id  ceph@ceph-mon2</span><br><span class="line">[root@ceph-mon1 ~]# ssh-copy-id  ceph@ceph-mon3</span><br><span class="line">[root@ceph-mon1 ~]# ssh-copy-id  ceph@ceph-osd1</span><br><span class="line">[root@ceph-mon1 ~]# ssh-copy-id  ceph@ceph-osd2</span><br></pre></td></tr></table></figure>
+<p>在ceph-mon上确保登陆到每台节点上都能无密码ssh登陆。</p>
+<h1 id="Ceph部署"><a href="#Ceph部署" class="headerlink" title="Ceph部署"></a>Ceph部署</h1><hr>
+<p>比起在每个Ceph节点上手动安装Ceph，用ceph-deploy工具统一安装要方便得多：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># yum install ceph-deploy -y</span><br></pre></td></tr></table></figure>
+<p>使用ceph用户创建一个ceph-cluster工作目录，以后的操作都在这个目录下面进行：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@ceph-mon1 ~]$ mkdir ~/ceph-cluster</span><br><span class="line">[root@ceph-mon1 ~]$ cd ceph-cluster/</span><br></pre></td></tr></table></figure>
+<p>在Deploy node上创建并编辑~/.ssh/config，这是Ceph官方doc推荐的步骤，这样做的目的是可以避免每次执行ceph-deploy时都要去指定 –username {username} 参数</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">[ceph@ceph-mon1 ~]$ vi .ssh/config </span><br><span class="line">Host ceph-mon1</span><br><span class="line">   Hostname ceph-mon1</span><br><span class="line">   User ceph</span><br><span class="line">Host ceph-mon2</span><br><span class="line">   Hostname ceph-mon2</span><br><span class="line">   User ceph</span><br><span class="line">Host ceph-mon3</span><br><span class="line">   Hostname ceph-mon3</span><br><span class="line">   User ceph</span><br><span class="line">Host ceph-osd1</span><br><span class="line">   Hostname ceph-osd1</span><br><span class="line">   User ceph</span><br><span class="line">Host ceph-osd2</span><br><span class="line">   Hostname ceph-osd2</span><br><span class="line">   User ceph</span><br><span class="line">Host ceph-osd3</span><br><span class="line">   Hostname ceph-osd3</span><br><span class="line">   User ceph</span><br></pre></td></tr></table></figure>
+<p>初始化集群，告诉ceph-deploy哪些节点是监控节点，命令成功执行后会在ceph-cluster目录下生成ceph.conf,ceph.log,ceph.mon.keyring等相关文件：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[ceph@ceph-mon1 my-cluster]$ ceph-deploy new ceph-mon1 ceph-mon2 ceph-mon3</span><br></pre></td></tr></table></figure>
+<p>在每个Ceph节点上都安装Ceph：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[root@ceph-mon1 ceph-cluster]# export CEPH_DEPLOY_REPO_URL=http://mirrors.ustc.edu.cn/ceph/rpm-luminous/el7</span><br><span class="line">[root@ceph-mon1 ceph-cluster]# export CEPH_DEPLOY_GPG_URL=http://mirrors.ustc.edu.cn/ceph/keys/release.asc</span><br><span class="line"></span><br><span class="line"># 我没有admin-node，ceph-deploy安装在mon1上</span><br><span class="line">[root@ceph-mon1 ceph-cluster]# ceph-deploy install ceph-mon1 ceph-mon2 ceph-mon3 ceph-osd1 ceph-osd2</span><br></pre></td></tr></table></figure>
+<p>初始化监控节点：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[root@ceph-mon1 ceph-cluster]# ceph-deploy mon create-initial</span><br></pre></td></tr></table></figure>
+<p>查看一下Ceph存储节点的硬盘情况：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@ceph-mon1 ceph-cluster]# ceph-deploy disk list ceph-osd1</span><br><span class="line">[root@ceph-mon1 ceph-cluster]# ceph-deploy disk list ceph-osd2</span><br></pre></td></tr></table></figure>
+<p><del>设置osd节点磁盘属组</del></p>
+<blockquote>
+<p>大坑，不要执行，后面解释</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"># osd节点执行</span><br><span class="line">for i in  b c d e f ;do chown ceph.ceph /dev/sd&quot;$i&quot;*;done</span><br><span class="line">[root@ceph-osd1 dev]# ll /dev/sd*</span><br><span class="line">brw-rw---- 1 root disk 8,  0 Apr 19 15:05 /dev/sda</span><br><span class="line">brw-rw---- 1 root disk 8,  1 Apr 19 15:05 /dev/sda1</span><br><span class="line">brw-rw---- 1 root disk 8,  2 Apr 19 15:05 /dev/sda2</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 16 Apr 19 15:49 /dev/sdb</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 17 Apr 19 15:49 /dev/sdb1</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 32 Apr 19 15:49 /dev/sdc</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 33 Apr 19 15:49 /dev/sdc1</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 48 Apr 19 15:49 /dev/sdd</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 49 Apr 19 15:49 /dev/sdd1</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 64 Apr 19 15:49 /dev/sde</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 65 Apr 19 15:49 /dev/sde1</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 80 Apr 19 15:06 /dev/sdf</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 81 Apr 19 16:01 /dev/sdf1</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 82 Apr 19 16:01 /dev/sdf2</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 83 Apr 19 16:01 /dev/sdf3</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 84 Apr 19 16:01 /dev/sdf4</span><br><span class="line"></span><br><span class="line">vi /etc/rc.d/rc.local </span><br><span class="line"># 增加开机启动修改属性</span><br><span class="line">for i in  b c d e f ;do chown ceph.ceph /dev/sd&quot;$i&quot;*;done</span><br></pre></td></tr></table></figure>
+<p><del>初始化Ceph硬盘，然后创建osd存储节点，存储节点:单个硬盘:对应的journal分区，一一对应：</del></p>
+<blockquote>
+<p>大坑，不要执行，后面解释</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"># create = prepare + activate</span><br><span class="line">[root@ceph-mon1 ceph-cluster]# ceph-deploy osd create ceph-osd1:sdb:/dev/sdf1 ceph-osd1:sdc:/dev/sdf2 ceph-osd1:sdd:/dev/sdf3 ceph-osd1:sde:/dev/sdf4</span><br><span class="line">[root@ceph-mon1 ceph-cluster]# ceph-deploy osd create ceph-osd2:sdb:/dev/sdf1 ceph-osd2:sdc:/dev/sdf2 ceph-osd2:sdd:/dev/sdf3 ceph-osd2:sde:/dev/sdf4</span><br><span class="line"></span><br><span class="line"># 可以使用zap清空磁盘分区表，请谨慎操作</span><br><span class="line">[root@ceph-mon1 ceph-cluster]# ceph-deploy disk zap ceph-osd1:sdb ceph-osd1:sdc ceph-osd1:sdd ceph-osd1:sde ceph-osd1:sdf</span><br><span class="line">[root@ceph-mon1 ceph-cluster]# ceph-deploy disk zap ceph-osd2:sdb ceph-osd2:sdc ceph-osd2:sdd ceph-osd2:sde ceph-osd2:sdf</span><br></pre></td></tr></table></figure>
+<p>好了，现在开始说坑的问题。</p>
+<p>因为之前我也是按照这个文档去操作的。但是有一天我重启主机以后，发现对应的osd全部都down了。</p>
+<p>查看日志发现全部是权限不足。查看以后发现是日志盘的权限不足，是<code>root</code>权限。</p>
+<p>然后其他sdd什么的权限全部正确。</p>
+<p>先给大家看个全部正确的。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line">[root@ceph-osd3 ~]# ll /dev/sd*</span><br><span class="line">brw-rw---- 1 root disk 8,  0 May  3 16:41 /dev/sda</span><br><span class="line">brw-rw---- 1 root disk 8,  1 May  3 16:41 /dev/sda1</span><br><span class="line">brw-rw---- 1 root disk 8,  2 May  3 16:41 /dev/sda2</span><br><span class="line">brw-rw---- 1 root disk 8, 16 May  3 16:41 /dev/sdb</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 17 May  3 16:41 /dev/sdb1</span><br><span class="line">brw-rw---- 1 root disk 8, 32 May  3 16:41 /dev/sdc</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 33 May  3 16:41 /dev/sdc1</span><br><span class="line">brw-rw---- 1 root disk 8, 48 May  3 16:41 /dev/sdd</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 49 May  3 16:41 /dev/sdd1</span><br><span class="line">brw-rw---- 1 root disk 8, 64 May  3 16:41 /dev/sde</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 65 May  3 16:41 /dev/sde1</span><br><span class="line">brw-rw---- 1 root disk 8, 80 May  3 16:41 /dev/sdf</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 81 May  3 16:41 /dev/sdf1</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 82 May  3 16:42 /dev/sdf2</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 83 May  3 16:42 /dev/sdf3</span><br><span class="line">brw-rw---- 1 ceph ceph 8, 84 May  3 16:41 /dev/sdf4</span><br><span class="line"></span><br><span class="line">[root@ceph-osd3 by-partuuid]# lsblk </span><br><span class="line">NAME        MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT</span><br><span class="line">fd0           2:0    1    4K  0 disk </span><br><span class="line">sda           8:0    0   32G  0 disk </span><br><span class="line">├─sda1        8:1    0    1G  0 part /boot</span><br><span class="line">└─sda2        8:2    0   31G  0 part </span><br><span class="line">  ├─cl-root 253:0    0 27.8G  0 lvm  /</span><br><span class="line">  └─cl-swap 253:1    0  3.2G  0 lvm  [SWAP]</span><br><span class="line">sdb           8:16   0   32G  0 disk </span><br><span class="line">└─sdb1        8:17   0   32G  0 part /var/lib/ceph/osd/ceph-8</span><br><span class="line">sdc           8:32   0   32G  0 disk </span><br><span class="line">└─sdc1        8:33   0   32G  0 part /var/lib/ceph/osd/ceph-9</span><br><span class="line">sdd           8:48   0   32G  0 disk </span><br><span class="line">└─sdd1        8:49   0   32G  0 part /var/lib/ceph/osd/ceph-10</span><br><span class="line">sde           8:64   0   32G  0 disk </span><br><span class="line">└─sde1        8:65   0   32G  0 part /var/lib/ceph/osd/ceph-11</span><br><span class="line">sdf           8:80   0   64G  0 disk </span><br><span class="line">├─sdf1        8:81   0  9.8G  0 part </span><br><span class="line">├─sdf2        8:82   0  9.8G  0 part </span><br><span class="line">├─sdf3        8:83   0  9.8G  0 part </span><br><span class="line">└─sdf4        8:84   0  9.8G  0 part </span><br><span class="line">sr0          11:0    1 1024M  0 rom </span><br><span class="line"></span><br><span class="line">[root@ceph-osd3 by-partuuid]# ll /dev/disk/by-partuuid/</span><br><span class="line">total 0</span><br><span class="line">lrwxrwxrwx 1 root root 10 May  3 16:41 029b2b60-3975-4ad2-8089-d40d9d1aefb6 -&gt; ../../sdc1</span><br><span class="line">lrwxrwxrwx 1 root root 10 May  3 16:41 054b3857-5534-4bb8-962b-d3e1c32cc5ca -&gt; ../../sdf4</span><br><span class="line">lrwxrwxrwx 1 root root 10 May  3 16:41 4acaf1b7-00be-4381-a833-a5de0c8bceb5 -&gt; ../../sdf2</span><br><span class="line">lrwxrwxrwx 1 root root 10 May  3 16:41 6826f098-3142-4498-8f4a-04bc862ce643 -&gt; ../../sdf3</span><br><span class="line">lrwxrwxrwx 1 root root 10 May  3 16:41 7291dd22-a3e2-441a-b457-95509c212955 -&gt; ../../sdd1</span><br><span class="line">lrwxrwxrwx 1 root root 10 May  3 16:41 adb33d81-8873-42e9-b73b-eed88c9aabb8 -&gt; ../../sdb1</span><br><span class="line">lrwxrwxrwx 1 root root 10 May  3 16:41 baec01a9-39e2-46e9-b47e-8ecc1d5e594b -&gt; ../../sdf1</span><br><span class="line">lrwxrwxrwx 1 root root 10 May  3 16:41 f81ae0ef-49c8-46d3-aee9-3a270f16f344 -&gt; ../../sde1</span><br></pre></td></tr></table></figure>
+<p>答案来了，因为ceph已经用uuid给你绑定上了。所以你根本没有必要去格式化日志盘做逻辑分区和设置权限。</p>
+<p>我是参考的这个<a href="http://blog.csdn.net/guzyguzyguzy/article/details/46729391" target="_blank" rel="noopener">文档</a></p>
+<p>个人认为正确的做法</p>
+<p>修改<code>ceph.conf</code></p>
+<p>增加<code>osd journal size = 10000</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br></pre></td><td class="code"><pre><span class="line">[ceph@ceph-mon1 my-cluster]$ cat ceph.conf</span><br><span class="line">[global]</span><br><span class="line">fsid = f09e34ea-2586-4102-9186-326c3bc1066e</span><br><span class="line">mon_initial_members = ceph-mon1, ceph-mon2, ceph-mon3</span><br><span class="line">mon_host = 10.117.130.173,10.117.130.174,10.117.130.175</span><br><span class="line">auth_cluster_required = cephx</span><br><span class="line">auth_service_required = cephx</span><br><span class="line">auth_client_required = cephx</span><br><span class="line">osd pool default size = 3</span><br><span class="line">osd pool default min size = 1</span><br><span class="line">public_network = 10.117.130.0/24</span><br><span class="line"></span><br><span class="line">max open files = 131072</span><br><span class="line"></span><br><span class="line">[mon]</span><br><span class="line">mon data = /var/lib/ceph/mon/ceph-$id</span><br><span class="line">mon clock drift allowed = 2</span><br><span class="line">mon clock drift warn backoff = 30</span><br><span class="line"></span><br><span class="line">[osd]</span><br><span class="line">osd data = /var/lib/ceph/osd/ceph-$id</span><br><span class="line">osd journal size = 10000</span><br><span class="line">osd mkfs type = xfs</span><br><span class="line">osd mkfs options xfs = -f</span><br><span class="line"></span><br><span class="line">filestore xattr use omap = true</span><br><span class="line">filestore min sync interval = 10</span><br><span class="line">filestore max sync interval = 15</span><br><span class="line">filestore queue max ops = 25000</span><br><span class="line">filestore queue max bytes = 10485760</span><br><span class="line">filestore queue committing max ops = 5000</span><br><span class="line">filestore queue committing max bytes = 10485760000</span><br><span class="line"></span><br><span class="line">journal max write bytes = 1073714824</span><br><span class="line">journal max write entries = 10000</span><br><span class="line">journal queue max ops = 50000</span><br><span class="line">journal queue max bytes = 10485760000</span><br><span class="line"></span><br><span class="line">osd max write size = 512</span><br><span class="line">osd client message size cap = 2147483648</span><br><span class="line">osd deep scrub stride = 131072</span><br><span class="line">osd op threads = 8</span><br><span class="line">osd disk threads = 4</span><br><span class="line">osd map cache size = 1024</span><br><span class="line">osd map cache bl size = 128</span><br><span class="line">osd mount options xfs = &quot;rw,noexec,nodev,noatime,nodiratime,nobarrier&quot;</span><br><span class="line">osd recovery op priority = 4</span><br><span class="line">osd recovery max active = 10</span><br><span class="line">osd max backfills = 4</span><br><span class="line"></span><br><span class="line">[client]</span><br><span class="line">rbd cache = true</span><br><span class="line">rbd cache size = 268435456</span><br><span class="line">rbd cache max dirty = 134217728</span><br><span class="line">rbd cache max dirty age = 5</span><br></pre></td></tr></table></figure>
+<p>初始化Ceph硬盘，不要添加日志盘的分区。</p>
+<p>ceph会根据ceph.conf里的journal size自动给你格式化磁盘，然后正确的设置uuid，并使用udev绑定正确的权限</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># create = prepare + activate</span><br><span class="line"># -zap直接格式化了</span><br><span class="line">[root@ceph-mon1 ceph-cluster]# ceph-deploy osd create --zap ceph-osd1:sdb:/dev/sdf ceph-osd1:sdc:/dev/sdf ceph-osd1:sdd:/dev/sdf ceph-osd1:sde:/dev/sdf</span><br><span class="line">[root@ceph-mon1 ceph-cluster]# ceph-deploy osd create --zap ceph-osd2:sdb:/dev/sdf ceph-osd2:sdc:/dev/sdf ceph-osd2:sdd:/dev/sdf ceph-osd2:sde:/dev/sdf</span><br></pre></td></tr></table></figure>
+<p>最后，我们把生成的配置文件从ceph-adm同步部署到其他几个节点，使得每个节点的ceph配置一致：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">[root@ceph-mon1 ceph-cluster]# ceph-deploy --overwrite-conf admin ceph-mon ceph-osd1 ceph-osd2</span><br><span class="line"></span><br><span class="line"># 同步conf后需要重新加权限</span><br><span class="line">[ceph@ceph-mon1 my-cluster]$ sudo chmod +r /etc/ceph/ceph.client.admin.keyring</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>测试</p>
+</blockquote>
+<p>看一下配置成功了没？</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[root@ceph-mon ceph-cluster]# ceph health</span><br></pre></td></tr></table></figure>
+<p>HEALTH_WARN 6 pgs degraded; 6 pgs stuck degraded; 64 pgs stuck unclean; 6 pgs stuck undersized; 6 pgs undersized; too few PGs per OSD (16 &lt; min 30)</p>
+<p>增加PG数目，<strong>Total PGs = (Total_number_of_OSD * 100) / max_replication_count（pgp_num应该设成和pg_num一样）</strong>，所以8*100/2=400，Ceph官方推荐取最接近2的指数倍，所以选择512（若日是太大则选择256）。如果顺利的话，就应该可以看到HEALTH_OK了：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">[root@ceph-mon ceph-cluster]# ceph osd pool set rbd size 2</span><br><span class="line">set pool 0 size to 2</span><br><span class="line">[root@ceph-mon ceph-cluster]# ceph osd pool set rbd min_size 2</span><br><span class="line">set pool 0 min_size to 2</span><br><span class="line">[root@ceph-mon ceph-cluster]# ceph osd pool set rbd pg_num 256</span><br><span class="line">set pool 0 pg_num to 256</span><br><span class="line">[root@ceph-mon ceph-cluster]# ceph osd pool set rbd pgp_num 256</span><br><span class="line">set pool 0 pgp_num to 256</span><br><span class="line">[root@ceph-mon ceph-cluster]# ceph health</span><br><span class="line">HEALTH_OK</span><br></pre></td></tr></table></figure>
+<p>更详细一点：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">[root@ceph-mon ceph-cluster]# ceph -s</span><br><span class="line">    cluster 38a7726b-6018-41f4-83c2-911b325116df</span><br><span class="line">     health HEALTH_OK</span><br><span class="line">     monmap e1: 1 mons at &#123;ceph-mon=192.168.128.131:6789/0&#125;</span><br><span class="line">            election epoch 2, quorum 0 ceph-mon</span><br><span class="line">     osdmap e46: 8 osds: 8 up, 8 in</span><br><span class="line">      pgmap v72: 256 pgs, 1 pools, 0 bytes data, 0 objects</span><br><span class="line">            276 MB used, 159 GB / 159 GB avail</span><br><span class="line">                 256 active+clean</span><br></pre></td></tr></table></figure>
+<p>如果操作没有问题的话记得把上面操作写到ceph.conf文件里，并同步部署的各节点：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[root@ceph-mon ceph-cluster]# echo &quot;osd pool default size = 2&quot;  &gt;&gt; ~/ceph-cluster/ceph.conf</span><br><span class="line">[root@ceph-mon ceph-cluster]# echo &quot;osd pool default min size = 2&quot; &gt;&gt; ~/ceph-cluster/ceph.conf</span><br><span class="line">[root@ceph-mon ceph-cluster]# echo &quot;osd pool default pg num = 256&quot; &gt;&gt; ~/ceph-cluster/ceph.conf</span><br><span class="line">[root@ceph-mon ceph-cluster]# echo &quot;osd pool default pgp num = 256&quot; &gt;&gt; ~/ceph-cluster/ceph.conf</span><br><span class="line">[root@ceph-mon ceph-cluster]# ceph-deploy --overwrite-conf admin ceph-deploy --overwrite-conf admin ceph-mon1 ceph-mon2 ceph-mon3 ceph-osd1 ceph-osd2</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>如果一切可以重来</p>
+</blockquote>
+<p>部署过程中如果出现任何奇怪的问题无法解决，可以简单的删除一切从头再来：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[root@ceph-mon ceph-cluster]# ceph-deploy purge ceph-mon1 ceph-mon2 ceph-mon3 ceph-osd1 ceph-osd2</span><br><span class="line">[root@ceph-mon ceph-cluster]# ceph-deploy purgedata ceph-mon1 ceph-mon2 ceph-mon3 ceph-osd1 ceph-osd2</span><br><span class="line">[root@ceph-mon ceph-cluster]# ceph-deploy forgetkeys</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>Troubelshooting</p>
+</blockquote>
+<p>如果出现任何网络问题，首先确认节点可以互相无密码ssh，各个节点的防火墙已关闭或加入规则</p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">ceph</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2018/11/13/cjzmeyv7a000dz5fyy4ef764w/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-Ceph-删除被占用的资源" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/11/13/cjzmeyv6a0001z5fyfmtxv6qe/">Ceph删除被占用的资源</a>
+    </h1>
+  
+
+        
+        <a href="/2018/11/13/cjzmeyv6a0001z5fyfmtxv6qe/" class="archive-article-date">
+  	<time datetime="2018-11-13T07:28:10.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在做实验的时候，需要删除历史的images。</p>
+<p>但是发现删除不了。一直提示资源正在被占用。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[root@node1 mnt]# rbd rm foo</span><br><span class="line">2017-03-13 14:21:35.958280 7fce9702b7c0 -1 librbd: image has watchers - not removing</span><br><span class="line">Removing image: 0% complete...failed.</span><br><span class="line">rbd: error: image still has watchers</span><br><span class="line">This means the image is still open or the client using it crashed. Try again after closing/unmapping it or waiting 30s for the crashed client to timeout</span><br></pre></td></tr></table></figure>
+<p>通过查看ceph info 来找到blockname</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@node1 mnt]# rbd info foo| grep prefix</span><br><span class="line">        block_name_prefix: rbd_data.1031238e1f29</span><br></pre></td></tr></table></figure>
+<p>使用listwatcher定位到哪些ip在使用</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[root@node1 mnt]# rados -p rbd listwatchers rbd_header.1031238e1f29</span><br><span class="line">watcher=10.117.130.149:0/1221339235 client.4174 cookie=18446462598732840961</span><br><span class="line">watcher=10.117.130.149:0/1221339235 client.4174 cookie=18446462598732840962</span><br></pre></td></tr></table></figure>
+<p>只要定位到那个机器再使用就比较好解决了。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">ssh 10.117.130.149</span><br><span class="line"></span><br><span class="line">[root@client ~]# rbd showmapped</span><br><span class="line">id pool image snap device    </span><br><span class="line">0  rbd  foo   -    /dev/rbd0 </span><br><span class="line">1  rbd  foo   -    /dev/rbd1 </span><br><span class="line">[root@client ~]# rbd unmap /dev/rbd0</span><br><span class="line">[root@client ~]# rbd unmap /dev/rbd1</span><br><span class="line">[root@client ~]# rbd showmapped</span><br></pre></td></tr></table></figure>
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">ceph</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2018/11/13/cjzmeyv6a0001z5fyfmtxv6qe/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-Best-practices-for-writing-Dockerfiles" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
   <div class="article-inner">
     
@@ -159,12 +941,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7vf0001znfydixjnaz1/">Best practices for writing Dockerfiles</a>
+      <a class="article-title" href="/2018/11/13/cjzmeyv7d000gz5fysvpy15gf/">Best practices for writing Dockerfiles</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjpm8f7vf0001znfydixjnaz1/" class="archive-article-date">
+        <a href="/2018/11/13/cjzmeyv7d000gz5fysvpy15gf/" class="archive-article-date">
   	<time datetime="2018-11-13T07:26:32.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -338,7 +1120,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7vf0001znfydixjnaz1/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjzmeyv7d000gz5fysvpy15gf/">展开全文 >></a>
         </p>
       
 
@@ -375,12 +1157,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7vt000aznfy1amnxxmw/">Kubernetes使用Ceph rbd持久化数据</a>
+      <a class="article-title" href="/2018/11/13/cjzmeyv7l000qz5fymwaoajl3/">Kubernetes使用Ceph rbd持久化数据</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjpm8f7vt000aznfy1amnxxmw/" class="archive-article-date">
+        <a href="/2018/11/13/cjzmeyv7l000qz5fymwaoajl3/" class="archive-article-date">
   	<time datetime="2018-11-13T07:24:50.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -449,7 +1231,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7vt000aznfy1amnxxmw/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjzmeyv7l000qz5fymwaoajl3/">展开全文 >></a>
         </p>
       
 
@@ -486,12 +1268,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7vm0004znfyz8vjumhi/">Ceph RBD安装配置</a>
+      <a class="article-title" href="/2018/11/13/cjzmeyv7n000sz5fyf8oscvlg/">Ceph RBD安装配置</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjpm8f7vm0004znfyz8vjumhi/" class="archive-article-date">
+        <a href="/2018/11/13/cjzmeyv7n000sz5fyf8oscvlg/" class="archive-article-date">
   	<time datetime="2018-11-13T07:18:15.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -621,7 +1403,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7vm0004znfyz8vjumhi/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjzmeyv7n000sz5fyf8oscvlg/">展开全文 >></a>
         </p>
       
 
@@ -658,12 +1440,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7x1001kznfyegbspm08/">Oracle使用PL/SQL导出csv文件</a>
+      <a class="article-title" href="/2018/11/13/cjzmeyv86001sz5fyugy2ai2f/">Oracle使用PL/SQL导出csv文件</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjpm8f7x1001kznfyegbspm08/" class="archive-article-date">
+        <a href="/2018/11/13/cjzmeyv86001sz5fyugy2ai2f/" class="archive-article-date">
   	<time datetime="2018-11-13T07:12:27.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -698,7 +1480,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7x1001kznfyegbspm08/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjzmeyv86001sz5fyugy2ai2f/">展开全文 >></a>
         </p>
       
 
@@ -735,12 +1517,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7x5001qznfy4ll3hhc6/">使用yumdownloader下载rpm包</a>
+      <a class="article-title" href="/2018/11/13/cjzmeyv8a0021z5fya0dpk0hq/">使用yumdownloader下载rpm包</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjpm8f7x5001qznfy4ll3hhc6/" class="archive-article-date">
+        <a href="/2018/11/13/cjzmeyv8a0021z5fya0dpk0hq/" class="archive-article-date">
   	<time datetime="2018-11-13T07:10:14.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -775,646 +1557,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7x5001qznfy4ll3hhc6/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-Mongodb权限概念" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7wm0012znfy9m2j3tx4/">Mongodb权限概念</a>
-    </h1>
-  
-
-        
-        <a href="/2018/11/13/cjpm8f7wm0012znfy9m2j3tx4/" class="archive-article-date">
-  	<time datetime="2018-11-13T06:56:03.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <blockquote>
-<p>转自HULK一线技术杂谈</p>
-</blockquote>
-<p>权限概念</p>
-<p>要想理解清楚MongoDB的权限必须先了解如下一些关键字</p>
-<p><strong>user</strong></p>
-<p>即用户，用于提供客户端连接MongoDB的认证账户</p>
-<p><strong>role</strong></p>
-<p>即角色，数据权限的集合，创建用户的时候必须要指定对应的角色，否则用户无法操作数据库</p>
-<p><strong>resource</strong></p>
-<p>即资源，包括database或collection也可以是database和collection的组合</p>
-<p>例如：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#123; db: &lt;database&gt;, collection: &lt;collection&gt; &#125;</span><br></pre></td></tr></table></figure>
-<p>当然你也可能看到一种特殊的资源：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#123;&quot;cluster&quot; : true&#125;</span><br></pre></td></tr></table></figure>
-<p>它其实表示的是全局资源</p>
-<p><strong>actions</strong></p>
-<p>即权限操作，”actions” 定义了”user”能够对 “resource document”执行的操作</p>
-<p>例如，增删改查包括如下操作：</p>
-<p>find、insert、remove、update</p>
-<p><strong>privilege</strong></p>
-<p>即权限，”privilege” 是一组”resource” 和 “actions” 的组合</p>
-<p><strong>authenticationDatabase</strong></p>
-<p>认证库，即创建角色或用户时所在的库</p>
-<p>例如，在 admin 下创建了 MongoDB 用户那么登陆的时候需要指定认证库</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mongo -u mongo -p xxx --host xxx --port xxx --authenticationDatabase=admin</span><br></pre></td></tr></table></figure>
-<p>角色</p>
-<p>MongoDB 里角色分为 ”内建角色“ 和 ”用户自定义“ 角色两种，内建角色是 MongoDB 为了方便用户管理和内部操作进行的预定义的一些角色具体见文末连接：MongoDB内建角色介绍</p>
-<p>多数时候为了精细化权限控制 MongoDB 的内建角色无法满足我们的需求，因此需要 DBA 自定义角色来进行更加详细的权限控制。</p>
-<p>创建角色</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">use admin ; // 进入名为admin的数据库下,下同</span><br><span class="line"></span><br><span class="line">db.createRole(</span><br><span class="line">       &#123; role:"testrole", //角色名称</span><br><span class="line">       privileges: [ // 权限集</span><br><span class="line">                  &#123;</span><br><span class="line">                     resource:  &#123; //资源</span><br><span class="line">                             db:"lidan",     // 创建的testrole角色具有对lidan库的操作权限，具体权限建actions</span><br><span class="line">                             collection:""   // lidan库下对应的集合名 如果为"" 表示所有集合</span><br><span class="line">                &#125;,</span><br><span class="line">                     actions: [ "find", "insert", "remove","update" ]   //角色可进行的操作，注意这里是一个数组</span><br><span class="line">                   &#125;</span><br><span class="line">                  ],</span><br><span class="line">         roles: [ ] // 是否继承其他的角色，如果指定了其他角色那么新创建的角色自动继承对应其他角色的所有权限，该参数必须显示指定</span><br><span class="line">       &#125;</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
-<p>上述语句在 admin 库里创建了一个名为 testrole的角色，该角色具有对数据库lidan下的所有集合进行 find、insert、remove、update的操作的权限。</p>
-<p>角色创建完毕后 MongoDB 会在系统库 admin 下创建一个系统collection名叫system.roles 里面存储的即是角色相关的信息。</p>
-<p>可以使用如下语句进行查看：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">db.system.roles.find();</span><br></pre></td></tr></table></figure>
-<p>另外， MongoDB 所有权限操作列表详见文末连接：MongoDB 权限操作列表</p>
-<p>查看角色</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">use admin; // 数据库必须是创建所要查看角色时的数据库，下同</span><br><span class="line"></span><br><span class="line">db.getRole( </span><br><span class="line">            "testrole", //要查看角色的名字</span><br><span class="line">            &#123; </span><br><span class="line">               showPrivileges: true   //指定查看角色信息的时候是否显示它所拥有的权限信息，也可不指定</span><br><span class="line">            &#125; </span><br><span class="line">          )</span><br></pre></td></tr></table></figure>
-<p>角色继承</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">use admin;</span><br><span class="line"></span><br><span class="line">//角色继承</span><br><span class="line"></span><br><span class="line">db.grantRolesToRole(  </span><br><span class="line">                     "testrole",</span><br><span class="line">                     [ "otherrole1","otherrole2" ] // 将 otherrole1、otherrole2 两个角色（假设之前已经创建好）的权限授予testrole角色</span><br><span class="line">                    )</span><br><span class="line">//角色权限回收</span><br><span class="line">db.revokeRolesFromRole(</span><br><span class="line">                         "testrole" ,</span><br><span class="line">                         [ "otherrole2" ] // 撤销testrole角色从otherrole2角色所继承的所有权限</span><br><span class="line">                      )</span><br></pre></td></tr></table></figure>
-<p>角色授权</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">use admin;</span><br><span class="line"></span><br><span class="line">db.grantPrivilegesToRole(</span><br><span class="line">    "testrole",</span><br><span class="line">        [</span><br><span class="line">        &#123;</span><br><span class="line">            resource: //权限可操作的资源</span><br><span class="line">               &#123;</span><br><span class="line">                    db:"lidan1",  // 授予testrole角色具有操作lidan1库的权限</span><br><span class="line">                    collection:"" // lidan_1库下的集合 如果为"" 表示所有集合</span><br><span class="line">                &#125;,                                                 </span><br><span class="line">            actions:  // 权限允许的操作</span><br><span class="line">            [ "createCollection", "dropCollection","convertToCapped"] //权限可进行的操作</span><br><span class="line">        &#125; </span><br><span class="line">        ]</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
-<p>执行完操作后testrole角色便可以对库lidan_1下的所有集合进行 “createCollection”, “dropCollection”,”convertToCapped” 操作。</p>
-<p>角色权限回收</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">use admin;</span><br><span class="line"></span><br><span class="line">db.revokePrivilegesFromRole(</span><br><span class="line">      "testrole",</span><br><span class="line">      [</span><br><span class="line">          &#123;</span><br><span class="line">              resource: //权限可操作的资源</span><br><span class="line">              &#123;</span><br><span class="line">                  db:"lidan1",  // 回收角色对库lidan1的actions 操作权限</span><br><span class="line">                  collection:"" //  lidan_1库下所有的集合 如果为"" 表示所有集合</span><br><span class="line">              &#125;,                                                 </span><br><span class="line"></span><br><span class="line">              actions:  // 权限允许的操作</span><br><span class="line">                  [ "createCollection", "dropCollection","convertToCapped"] //需要回收的权限</span><br><span class="line">              &#125; </span><br><span class="line">      ]</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
-<p>执行完操作后testrole角色对库lidan_1下的所有集合无法进行 “createCollection”, “dropCollection”,”convertToCapped” 操作。</p>
-<p>删除角色</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">use admin;</span><br><span class="line"></span><br><span class="line">db.dropRole(&quot;testrole&quot;) // 删除角色比较简单直接指定要删除角色的名称即可</span><br></pre></td></tr></table></figure>
-<p>其他关于角色的对应操作请参考文末连接：MongoDB角色管理方法</p>
-<p>用户</p>
-<p>创建用户</p>
-<p>MongoDB 创建用户时可以指定内建角色也可以使用用户自定义角色，DBA 可以根据需求自行决定（注意：用户不允许在local库下创建用户）</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">user admin;</span><br><span class="line"></span><br><span class="line">// 指定内建角色来创建用户</span><br><span class="line"></span><br><span class="line">db.createUser(</span><br><span class="line">    &#123;</span><br><span class="line">        user:'mongo', // 用户名</span><br><span class="line">        pwd:'123',    // 密码</span><br><span class="line">        roles:[ </span><br><span class="line">                  &#123;</span><br><span class="line">                      role:'root',// 通过指定内建角色root 来创建用户</span><br><span class="line">                      db:'admin'  // 指定角色对应的认证数据库，内建角色通常认证库为admin</span><br><span class="line">                  &#125;</span><br><span class="line">              ]</span><br><span class="line">    &#125;</span><br><span class="line">) ;</span><br><span class="line"></span><br><span class="line">// 指定自定义角色来创建用户，这里是在admin下创建的用户故认证库也是admin</span><br><span class="line"></span><br><span class="line">db.createUser(</span><br><span class="line">    &#123;  </span><br><span class="line">        user:"mongo",// 用户名</span><br><span class="line">        pwd:"123",   // 密码</span><br><span class="line">        roles:["testrole"] //通过指定用户自定义角色来创建用户,注意这里是数组</span><br><span class="line">    &#125;</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
-<p>用户创建成功后可以使用如下语句登陆：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mongo   -u mongo -p 123 --host 127.0.0.1 --port 9999 --authenticationDatabase=admin</span><br></pre></td></tr></table></figure>
-<p>查看用户</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">use admin;</span><br><span class="line"></span><br><span class="line">db.getUser(&quot;mongo&quot;) // 查看用户比较简单只需要指定用户名即可</span><br></pre></td></tr></table></figure>
-<p>为用户 添加/回收 角色</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">use admin;</span><br><span class="line"></span><br><span class="line">//为用户添加角色</span><br><span class="line"></span><br><span class="line">db.grantRolesToUser(</span><br><span class="line">    "mongo", // 用户名</span><br><span class="line">        [ </span><br><span class="line">            &#123; role: "testrole", // 需要添加的角色名 </span><br><span class="line">                db: "admin" // 角色对应的认证库，即角色创建时所在的数据库</span><br><span class="line">            &#125; </span><br><span class="line">        ]</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">//对用户的角色进行回收，如果将用户所有的角色都回收完毕，那么用户只有对所属库的连接权限</span><br><span class="line"></span><br><span class="line">db.revokeRolesFromUser(</span><br><span class="line">    "mongo", // 用户名</span><br><span class="line">        [ </span><br><span class="line">            &#123; role: "testrole", // 需要回收的角色名 </span><br><span class="line">                db: "admin" // 角色对应的认证库，即角色创建时所在的数据库</span><br><span class="line">            &#125; </span><br><span class="line">        ]</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
-<p>删除用户</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">use admin;</span><br><span class="line"></span><br><span class="line">db.dropUser(&quot;mongo&quot;); // 删除用户比较简单直接指定用户名即可</span><br></pre></td></tr></table></figure>
-<p>另外，除上述对用户的操作方法外还有其他对用户的管理方法。这里就不一一列举可详见文末连接：MongoDB 用户管理方法</p>
-<p>注意事项</p>
-<p>\1. 在 MongoDB 中删除库和集合并不会级联删除对应的角色和用户。因此如果想彻底删除对应的业务库因该先删除库及其对应的角色和用户。</p>
-<p>\2. 如果既想实现精细化权限控制又想简化用户管理，原则上建议只给开发创建一个账户，并且使用 admin 做认证库，这样可避免清理过期业务库而导致无法登陆的问题。</p>
-<p>相关连接:</p>
-<p>MongoDB 内建角色介绍：</p>
-<p><a href="https://docs.mongodb.org/manual/reference/built-in-roles/" target="_blank" rel="noopener">https://docs.mongodb.org/manual/reference/built-in-roles/</a></p>
-<p>MongoDB 权限操作列表：</p>
-<p><a href="https://docs.mongodb.org/manual/reference/privilege-actions/#security-user-actions" target="_blank" rel="noopener">https://docs.mongodb.org/manual/reference/privilege-actions/#security-user-actions</a></p>
-<p>MongoDB 角色管理方法：</p>
-<p><a href="https://docs.mongodb.org/manual/reference/method/js-role-management/" target="_blank" rel="noopener">https://docs.mongodb.org/manual/reference/method/js-role-management/</a></p>
-<p>MongoDB 用户管理方法：</p>
-<p><a href="https://docs.mongodb.org/manual/reference/method/js-user-management/" target="_blank" rel="noopener">https://docs.mongodb.org/manual/reference/method/js-user-management/</a></p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">mongodb</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7wm0012znfy9m2j3tx4/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-Mongodb-sharded-cluster-using-keyfile" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7wh000xznfyjlgktb3b/">Mongodb sharded cluster using keyfile</a>
-    </h1>
-  
-
-        
-        <a href="/2018/11/13/cjpm8f7wh000xznfyjlgktb3b/" class="archive-article-date">
-  	<time datetime="2018-11-13T06:53:33.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="官方文档"><a href="#官方文档" class="headerlink" title="官方文档"></a>官方文档</h2><p><a href="https://docs.mongodb.com/v3.2/tutorial/enforce-keyfile-access-control-in-existing-sharded-cluster/" target="_blank" rel="noopener">Enforce Keyfile Access Control in Sharded Cluster</a></p>
-<h2 id="坑"><a href="#坑" class="headerlink" title="坑"></a>坑</h2><ol>
-<li>按照官方文档无法成功。</li>
-<li><code>enableLocalhostAuthBypass</code>这个参数已经不可用了，官方文档有写。</li>
-<li>一定要建立用户（本地、集群），开启keyfile默认开启鉴权，如果没有用户各种错误，而且链接不上。</li>
-</ol>
-<h2 id="部署操作"><a href="#部署操作" class="headerlink" title="部署操作"></a>部署操作</h2><h3 id="建立keyfile"><a href="#建立keyfile" class="headerlink" title="建立keyfile"></a>建立<code>keyfile</code></h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">openssl rand -base64 756 &gt; &lt;path-to-keyfile&gt;</span><br><span class="line">chmod 400 &lt;path-to-keyfile&gt;</span><br></pre></td></tr></table></figure>
-<h3 id="复制keyfile到集群"><a href="#复制keyfile到集群" class="headerlink" title="复制keyfile到集群"></a>复制keyfile到集群</h3><p>mongod、mongos、config</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">IMPORTANT</span><br><span class="line">Do not use shared network locations or storage mediums such as USB drives for storing the keyfile.</span><br></pre></td></tr></table></figure>
-<h3 id="关闭Balancer"><a href="#关闭Balancer" class="headerlink" title="关闭Balancer"></a>关闭Balancer</h3><p>Connect a <a href="https://docs.mongodb.com/v3.2/reference/program/mongo/#bin.mongo" target="_blank" rel="noopener">mongo</a> shell to a <a href="https://docs.mongodb.com/v3.2/reference/program/mongos/#bin.mongos" target="_blank" rel="noopener">mongos</a>.</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">sh.stopBalancer()</span><br><span class="line">#关闭</span><br><span class="line"></span><br><span class="line">sh.getBalancerState()</span><br><span class="line">#检查是否关闭</span><br></pre></td></tr></table></figure>
-<h3 id="建立副本集用户"><a href="#建立副本集用户" class="headerlink" title="建立副本集用户"></a>建立副本集用户</h3><p>Create the user administrator（只能管理用户，不能管理数据、集群）</p>
-<p>ie 这个链接的是副本集，千万别搞错。</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">admin = db.getSiblingDB("admin")</span><br><span class="line">admin.createUser(</span><br><span class="line">  &#123;</span><br><span class="line">    user: "rsuseradmin", //这个用户只能管理user，不能管理集群</span><br><span class="line">    pwd: "changeme1",</span><br><span class="line">    roles: [ &#123; role: "userAdminAnyDatabase", db: "admin" &#125; ]</span><br><span class="line">  &#125;</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
-<p>Create Administrative User for Cluster Management（管理rs副本集）</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">db.getSiblingDB("admin").createUser(</span><br><span class="line">  &#123;</span><br><span class="line">    "user" : "rsclusteradmin", //只能管理集群</span><br><span class="line">    "pwd" : "changeme2",</span><br><span class="line">    roles: [ &#123; "role" : "clusterAdmin", "db" : "admin" &#125; ]</span><br><span class="line">  &#125;</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
-<p>如果需要访问本地数据，可以使用rsuseradmin建立一个新的用户来访问数据库</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">db.createUser(&#123;user:"test",pwd:"test",roles:[  </span><br><span class="line">    &#123;role:"dbOwner",db:"wangxi"&#125;]&#125;);  </span><br><span class="line">#建立用户test，角色dbOwner</span><br></pre></td></tr></table></figure>
-<h3 id="建立分片集群用户（shard）"><a href="#建立分片集群用户（shard）" class="headerlink" title="建立分片集群用户（shard）"></a>建立分片集群用户（shard）</h3><p>Create the user administrator</p>
-<p>管理用户的管理员，真绕。</p>
-<p>这个是要链接到<code>mongos</code></p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">admin = db.getSiblingDB("admin")</span><br><span class="line">admin.createUser(</span><br><span class="line">  &#123;</span><br><span class="line">    user: "shuseradmin", //这个用户只能管理user，不能管理集群</span><br><span class="line">    pwd: "changeme1",</span><br><span class="line">    roles: [ &#123; role: "userAdminAnyDatabase", db: "admin" &#125; ]</span><br><span class="line">  &#125;</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
-<p>Create Administrative User for Cluster Management</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">db.getSiblingDB("admin").createUser(</span><br><span class="line">  &#123;</span><br><span class="line">    "user" : "shclusteradmin", //只能管理集群</span><br><span class="line">    "pwd" : "changeme2",</span><br><span class="line">    roles: [ &#123; "role" : "clusterAdmin", "db" : "admin" &#125; ]</span><br><span class="line">  &#125;</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">#sh.status()</span><br></pre></td></tr></table></figure>
-<h3 id="为什么要单独设置用户？"><a href="#为什么要单独设置用户？" class="headerlink" title="为什么要单独设置用户？"></a>为什么要单独设置用户？</h3><ol>
-<li>rs可能会单独增加成员</li>
-<li>rs可能需要直接链接到mongod</li>
-<li>sh可能会增加分片</li>
-</ol>
-<h3 id="修改配置文件增加keyfile"><a href="#修改配置文件增加keyfile" class="headerlink" title="修改配置文件增加keyfile"></a>修改配置文件增加keyfile</h3><p>mongos、mongod、config 关闭实例，增加keyfile</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">security:</span><br><span class="line">  keyFile: /home/mongodb/mongodata/cfg/keyfile</span><br></pre></td></tr></table></figure>
-<p>增加后，重启所有实例</p>
-<h3 id="开启balancer"><a href="#开启balancer" class="headerlink" title="开启balancer"></a>开启balancer</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mongo -u shclusteradmin -p changeme2 admin --port 27000</span><br><span class="line">sh.startBalancer()</span><br></pre></td></tr></table></figure>
-<h3 id="测试权限"><a href="#测试权限" class="headerlink" title="测试权限"></a>测试权限</h3><p>副本集</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br></pre></td><td class="code"><pre><span class="line">[mongodb@se122 logs]$ mongo -u rsuseradmin -p changeme1 admin --port 27011</span><br><span class="line">MongoDB shell version: 3.2.10</span><br><span class="line">connecting to: 127.0.0.1:27011/admin</span><br><span class="line">rs1:PRIMARY&gt; db.system.users.find().pretty()</span><br><span class="line">&#123;</span><br><span class="line">	&quot;_id&quot; : &quot;admin.fred&quot;,</span><br><span class="line">	&quot;user&quot; : &quot;fred&quot;,</span><br><span class="line">	&quot;db&quot; : &quot;admin&quot;,</span><br><span class="line">	&quot;credentials&quot; : &#123;</span><br><span class="line">		&quot;SCRAM-SHA-1&quot; : &#123;</span><br><span class="line">			&quot;iterationCount&quot; : 10000,</span><br><span class="line">			&quot;salt&quot; : &quot;IWDku4hxN12fEwxEPpP8aw==&quot;,</span><br><span class="line">			&quot;storedKey&quot; : &quot;6jkANel76XXtCvTz3fiIvC9vNMc=&quot;,</span><br><span class="line">			&quot;serverKey&quot; : &quot;IsKKSA9+zRScpLZLkg3zeMyI5IU=&quot;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;,</span><br><span class="line">	&quot;roles&quot; : [</span><br><span class="line">		&#123;</span><br><span class="line">			&quot;role&quot; : &quot;userAdminAnyDatabase&quot;,</span><br><span class="line">			&quot;db&quot; : &quot;admin&quot;</span><br><span class="line">		&#125;</span><br><span class="line">	]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">[mongodb@se122 logs]$ mongo -u rsclusteradmin -p changeme2 admin --port 27011</span><br><span class="line">MongoDB shell version: 3.2.10</span><br><span class="line">connecting to: 127.0.0.1:27011/admin</span><br><span class="line">Server has startup warnings:</span><br><span class="line">2016-12-13T14:27:52.966+0800 I CONTROL  [initandlisten]</span><br><span class="line">2016-12-13T14:27:52.966+0800 I CONTROL  [initandlisten] ** WARNING: /sys/kernel/mm/transparent_hugepage/enabled is &apos;always&apos;.</span><br><span class="line">2016-12-13T14:27:52.966+0800 I CONTROL  [initandlisten] **        We suggest setting it to &apos;never&apos;</span><br><span class="line">2016-12-13T14:27:52.966+0800 I CONTROL  [initandlisten]</span><br><span class="line">2016-12-13T14:27:52.966+0800 I CONTROL  [initandlisten] ** WARNING: /sys/kernel/mm/transparent_hugepage/defrag is &apos;always&apos;.</span><br><span class="line">2016-12-13T14:27:52.966+0800 I CONTROL  [initandlisten] **        We suggest setting it to &apos;never&apos;</span><br><span class="line">2016-12-13T14:27:52.966+0800 I CONTROL  [initandlisten]</span><br><span class="line">rs1:PRIMARY&gt; rs.status()</span><br><span class="line">&#123;</span><br><span class="line">	&quot;set&quot; : &quot;rs1&quot;,</span><br><span class="line">	&quot;date&quot; : ISODate(&quot;2016-12-13T08:28:07.902Z&quot;),</span><br><span class="line">	&quot;myState&quot; : 1,</span><br><span class="line">	&quot;term&quot; : NumberLong(19),</span><br><span class="line">	&quot;heartbeatIntervalMillis&quot; : NumberLong(2000),</span><br><span class="line">	&quot;members&quot; : [</span><br><span class="line">		&#123;</span><br><span class="line">			&quot;_id&quot; : 0,</span><br><span class="line">			&quot;name&quot; : &quot;se122:27011&quot;,</span><br><span class="line">			&quot;health&quot; : 1,</span><br><span class="line">			&quot;state&quot; : 1,</span><br><span class="line">			&quot;stateStr&quot; : &quot;PRIMARY&quot;,</span><br><span class="line">			&quot;uptime&quot; : 7215,</span><br><span class="line">			&quot;optime&quot; : &#123;</span><br><span class="line">				&quot;ts&quot; : Timestamp(1481617664, 1),</span><br><span class="line">				&quot;t&quot; : NumberLong(19)</span><br><span class="line">			&#125;,</span><br><span class="line">			&quot;optimeDate&quot; : ISODate(&quot;2016-12-13T08:27:44Z&quot;),</span><br><span class="line">			&quot;electionTime&quot; : Timestamp(1481610472, 1),</span><br><span class="line">			&quot;electionDate&quot; : ISODate(&quot;2016-12-13T06:27:52Z&quot;),</span><br><span class="line">			&quot;configVersion&quot; : 1,</span><br><span class="line">			&quot;self&quot; : true</span><br><span class="line">		&#125;</span><br><span class="line">	],</span><br><span class="line">	&quot;ok&quot; : 1</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>分片</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">[mongodb@se122 logs]$ mongo -u shuseradmin -p changeme1 admin --port 27000</span><br><span class="line">mongos&gt; db.system.users.find().pretty()</span><br><span class="line">&#123;</span><br><span class="line">	&quot;_id&quot; : &quot;admin.ravi&quot;,</span><br><span class="line">	&quot;user&quot; : &quot;ravi&quot;,</span><br><span class="line">	&quot;db&quot; : &quot;admin&quot;,</span><br><span class="line">	&quot;credentials&quot; : &#123;</span><br><span class="line">		&quot;SCRAM-SHA-1&quot; : &#123;</span><br><span class="line">			&quot;iterationCount&quot; : 10000,</span><br><span class="line">			&quot;salt&quot; : &quot;hXA/YhP0rs4IIk/tkMA/mA==&quot;,</span><br><span class="line">			&quot;storedKey&quot; : &quot;XYehp2s7c2KBf9xHeGxE2dxdpKY=&quot;,</span><br><span class="line">			&quot;serverKey&quot; : &quot;Iq7zWR9iexZU8Of2WjE8X+Z4/14=&quot;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;,</span><br><span class="line">	&quot;roles&quot; : [</span><br><span class="line">		&#123;</span><br><span class="line">			&quot;role&quot; : &quot;clusterAdmin&quot;,</span><br><span class="line">			&quot;db&quot; : &quot;admin&quot;</span><br><span class="line">		&#125;</span><br><span class="line">	]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">[mongodb@se122 logs]$ mongo -u shclusteradmin -p changeme2 admin --port 27000</span><br><span class="line">MongoDB shell version: 3.2.10</span><br><span class="line">connecting to: 127.0.0.1:27000/admin</span><br><span class="line">mongos&gt; sh.status()</span><br><span class="line">--- Sharding Status ---</span><br><span class="line">  sharding version: &#123;</span><br><span class="line">	&quot;_id&quot; : 1,</span><br><span class="line">	&quot;minCompatibleVersion&quot; : 5,</span><br><span class="line">	&quot;currentVersion&quot; : 6,</span><br><span class="line">	&quot;clusterId&quot; : ObjectId(&quot;582574de7ecb76cb2edff64e&quot;)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>认证库</p>
-<p>在分片环境中我们使用mongos链接mongod实例获取数据，这个时候会用到认证库来认证数据</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">mongos&gt; db.getSiblingDB(&quot;admin&quot;).dropUser(&quot;test1&quot;)</span><br><span class="line">true</span><br><span class="line">#清空之前的实验用户</span><br><span class="line"></span><br><span class="line">db.getSiblingDB(&quot;admin&quot;).createUser(</span><br><span class="line">  &#123;</span><br><span class="line">    &quot;user&quot; : &quot;test1&quot;,</span><br><span class="line">    &quot;pwd&quot; : &quot;test1&quot;,</span><br><span class="line">    roles: [ &#123; &quot;role&quot; : &quot;dbOwner&quot;, &quot;db&quot; : &quot;wangxi&quot; &#125; ]</span><br><span class="line">  &#125;</span><br><span class="line">)</span><br><span class="line">#在mongos建立用户，这个数据最终会放到config里</span><br><span class="line"></span><br><span class="line">[mongodb@se122 logs]$ mongo -u test1 -p test1 wangxi --port 27000 --authenticationDatabase=admin</span><br><span class="line">MongoDB shell version: 3.2.10</span><br><span class="line">connecting to: 127.0.0.1:27000/wangxi</span><br><span class="line">mongos&gt; db.test.findOne()</span><br><span class="line">&#123;</span><br><span class="line">	&quot;_id&quot; : ObjectId(&quot;583ce0973e14696294e0bbcf&quot;),</span><br><span class="line">	&quot;uid&quot; : 3,</span><br><span class="line">	&quot;name&quot; : &quot;Ale&quot;,</span><br><span class="line">	&quot;phone&quot; : &quot;+55 53 1234 4321&quot;,</span><br><span class="line">	&quot;timestamp&quot; : ISODate(&quot;2016-11-29T01:57:57.429Z&quot;)</span><br><span class="line">&#125;</span><br><span class="line">#通过mongos获取用户数据</span><br></pre></td></tr></table></figure>
-<h3 id="权限说明"><a href="#权限说明" class="headerlink" title="权限说明"></a>权限说明</h3><ul>
-<li>数据库用户角色（user）</li>
-</ul>
-<p>read和readWrite，表示用户具有指定数据库的读或者写角色。这两角色比较基本，能对数据库进行基本的读写操作，对于普通的application而言，可以限定用户为此角色</p>
-<ul>
-<li><p>数据库管理员角色（admin）</p>
-<ol>
-<li>userAdmin：“用户管理员”，可以对指定的数据库，创建用户、修改用户的roles；这种角色，只能管理用户，不能访问数据库的数据。</li>
-<li>dbAdmin：“数据库管理员”，可以对指定的数据库，进行创建索引、schema调整、统计信息搜集等，比如“dbStats”、“collStats”、“createCollection”、“createIndex”等；但是它不能创建用户和role</li>
-<li>dbOwner：“数据库持有者”，继承“readWrite”、“dbAdmin”、“userAdmin”三种角色。通常我们必须为每个数据库创建至少一个“userAdmin”或者“dbOwner”权限的管理员用户，以便管理普通的“user”用户。</li>
-</ol>
-</li>
-<li><p>集群管理员角色（cluster admin)</p>
-<p>用于管理集群（replica set和sharding cluster）系统和数据库。如果你的架构是集群模式，数据库至少有一个cluster管理员角色的用户。</p>
-<ol>
-<li>clusterManager：“集群管理员”，可以访问config、local数据库，这对sharding、replica set都很重要，比如sharding的维护方法“enableSharding”、“addShard”、“dbStats”，以及“replica set”中的维护方法“replSetConfigure”、“replSetGetStatus”等等。我们可以使用此角色的用户调整集群节点的部署和查看一些数据库状态。</li>
-<li>hostManager：“host管理员”</li>
-<li>clusterAdmin：“集群管理员”，继承了“clusterManager”、“hostManager”、“clusterMonitor”等角色，是集群管理的最高角色；通常我们只需要给一个sharding database指定一个此角色的用户即可。</li>
-</ol>
-</li>
-<li><p>所有数据库角色（All-Databases)</p>
-<p>即此角色不限定在某个数据库上，它限定在所有的数据库上；如果一个用户需要具有所有数据库的权限，传统的方式就是在每个数据库下创建一个user，繁琐而且易于疏漏，All-Databases提供了一种便捷的手段，创建这样角色的用户时不需要指定数据库。</p>
-<ol>
-<li>readAnyDatabase、readWriteAnyDatabase：对所有数据库具有读、读写角色。</li>
-<li>userAdminAnyDatabase：是所有数据库的用户管理员。</li>
-<li>dbAdminAnyDatabase：是所有数据库的管理员。</li>
-</ol>
-</li>
-<li><p>超级用户权限</p>
-<p>root角色是一个超级角色，此角色的用户具有所有的操作权限，是“readWriteAnyDatabase”、“dbAdminAnyDatabase”、“userAdminAnyDatabase”、“clusterAdmin”角色的组合。对于开发人员而言，为了维护的便捷性，可以给mongodb（或者集群）创建一个root用户。</p>
-</li>
-</ul>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">mongodb</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7wh000xznfyjlgktb3b/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-Oracle并发查询占用大量process数据库无法登陆" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7wy001gznfyldqsbazv/">Oracle并发查询占用大量process数据库无法登陆</a>
-    </h1>
-  
-
-        
-        <a href="/2018/11/13/cjpm8f7wy001gznfyldqsbazv/" class="archive-article-date">
-  	<time datetime="2018-11-13T06:51:54.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h3 id="问题描述"><a href="#问题描述" class="headerlink" title="问题描述"></a>问题描述</h3><ol>
-<li>数据库无法登陆</li>
-<li>查看日志ORA-00020: maximum number of processes (300) exceeded</li>
-<li>ps -ef 查看发现大量p开头的session（p代表并行查询parallel）</li>
-</ol>
-<h3 id="解决思路"><a href="#解决思路" class="headerlink" title="解决思路"></a>解决思路</h3><ol>
-<li>修改processes，需要重启不可行</li>
-<li>处理大量并发sql</li>
-</ol>
-<h3 id="问题解决"><a href="#问题解决" class="headerlink" title="问题解决"></a>问题解决</h3><p>查找那些sid使用并行查询</p>
-<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> qcsid,<span class="keyword">count</span>(*) <span class="keyword">from</span> V$PX_SESSION <span class="keyword">group</span> <span class="keyword">by</span> qcsid</span><br></pre></td></tr></table></figure>
-<p><code>V$PX_SESSION</code> contains information about the sessions running parallel execution.</p>
-<table>
-<thead>
-<tr>
-<th>Column</th>
-<th>Datatype</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>SADDR</code></td>
-<td><code>RAW(4/8)</code></td>
-<td>Session address</td>
-</tr>
-<tr>
-<td><code>SID</code></td>
-<td><code>NUMBER</code></td>
-<td>Session identifier</td>
-</tr>
-<tr>
-<td><code>SERIAL#</code></td>
-<td><code>NUMBER</code></td>
-<td>Session serial number</td>
-</tr>
-<tr>
-<td><code>QCSID</code></td>
-<td><code>NUMBER</code></td>
-<td>Session identifier of the parallel coordinator</td>
-</tr>
-<tr>
-<td><code>QCSERIAL#</code></td>
-<td><code>NUMBER</code></td>
-<td>Session serial number of the parallel coordinator</td>
-</tr>
-<tr>
-<td><code>QCINST_ID</code></td>
-<td><code>NUMBER</code></td>
-<td>Instance number on which the parallel coordinator is running</td>
-</tr>
-<tr>
-<td><code>SERVER_GROUP</code></td>
-<td><code>NUMBER</code></td>
-<td>The logical group of servers to which this cluster database process belongs</td>
-</tr>
-<tr>
-<td><code>SERVER_SET</code></td>
-<td><code>NUMBER</code></td>
-<td>The logical set of servers to which this cluster database process belongs. A single server group will have at most two server sets.</td>
-</tr>
-<tr>
-<td><code>SERVER#</code></td>
-<td><code>NUMBER</code></td>
-<td>The logical number of the cluster database process within a server set</td>
-</tr>
-<tr>
-<td><code>DEGREE</code></td>
-<td><code>NUMBER</code></td>
-<td>The degree of parallelism being used by the server set</td>
-</tr>
-<tr>
-<td><code>REQ_DEGREE</code></td>
-<td><code>NUMBER</code></td>
-<td>The degree of parallelism that was requested by the user when the statement was issued and prior to any resource, multi-user, or load balancing reductions</td>
-</tr>
-</tbody>
-</table>
-<p>使用sid查找有问题的session相关信息</p>
-<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> s.*,</span><br><span class="line">       <span class="keyword">Decode</span>(<span class="keyword">upper</span>(wait_class), <span class="string">'IDLE'</span>, <span class="number">0</span>,</span><br><span class="line">                                 seconds_in_wait) seconds_in_wait_nodidle,</span><br><span class="line">       <span class="keyword">case</span></span><br><span class="line">         <span class="keyword">when</span> ( sql_id <span class="keyword">is</span> <span class="literal">null</span> )</span><br><span class="line">              <span class="keyword">and</span> ( prev_sql_id <span class="keyword">is</span> <span class="literal">null</span> ) <span class="keyword">then</span> <span class="literal">NULL</span></span><br><span class="line">         <span class="keyword">else</span> ( <span class="string">'Active SQL: '</span></span><br><span class="line">                || nvl((<span class="keyword">select</span> <span class="keyword">max</span>(sql_text)</span><br><span class="line">                        <span class="keyword">from</span>   gv$<span class="keyword">SQL</span></span><br><span class="line">                        <span class="keyword">where</span>  ( sql_id = s.sql_id )), <span class="string">'?'</span>)</span><br><span class="line">                || <span class="keyword">chr</span>(<span class="number">13</span>)</span><br><span class="line">                ||<span class="keyword">chr</span>(<span class="number">10</span>)</span><br><span class="line">                ||<span class="string">'Prev. SQL: '</span></span><br><span class="line">                || nvl((<span class="keyword">select</span> <span class="keyword">max</span>(sql_text)</span><br><span class="line">                        <span class="keyword">from</span>   v$<span class="keyword">SQL</span></span><br><span class="line">                        <span class="keyword">where</span>  ( sql_id = s.prev_sql_id )), <span class="string">'?'</span>) )</span><br><span class="line">       <span class="keyword">end</span> SQLINFO</span><br><span class="line"><span class="keyword">from</span>   gv$<span class="keyword">session</span> s</span><br><span class="line"><span class="keyword">where</span> s.SCHEMANAME != <span class="string">'SYS'</span></span><br><span class="line"><span class="keyword">and</span> S.SID = <span class="string">'287'</span></span><br></pre></td></tr></table></figure>
-<p>使用执行计划等工具对语句进行分析。kill有问题的session</p>
-<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> plan_table_output <span class="keyword">FROM</span> <span class="keyword">TABLE</span>(DBMS_XPLAN.DISPLAY_CURSOR(<span class="string">'c8m5td2tmpcxg'</span>,<span class="number">0</span>,<span class="string">'advanced  ALLSTATS LAST'</span>))</span><br></pre></td></tr></table></figure>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">oracle</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7wy001gznfyldqsbazv/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-Mongodb同步慢分析" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7wj000yznfyao5nk1jn/">Mongodb同步慢分析</a>
-    </h1>
-  
-
-        
-        <a href="/2018/11/13/cjpm8f7wj000yznfyao5nk1jn/" class="archive-article-date">
-  	<time datetime="2018-11-13T06:49:26.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>转自：<a href="https://yq.aliyun.com/articles/47336?spm=5176.8091938.0.0.WPuhZ0" target="_blank" rel="noopener">https://yq.aliyun.com/articles/47336?spm=5176.8091938.0.0.WPuhZ0</a></p>
-<h2 id="问题背景"><a href="#问题背景" class="headerlink" title="问题背景"></a>问题背景</h2><p>最近生产环境出现多次Primary写入QPS太高，导致Seconary的同步无法跟上的问题（Secondary上的最新oplog时间戳比Primary上最旧oplog时间戳小），使得Secondary变成RECOVERING状态，这时需要人工介入处理，向Secondary发送resync命令，让Secondary重新全量同步一次。</p>
-<h2 id="同步过程"><a href="#同步过程" class="headerlink" title="同步过程"></a>同步过程</h2><p>下图是MongoDB数据同步的流程</p>
-<p><a href="http://77g6ez.com1.z0.glb.clouddn.com/sync.png" target="_blank" rel="noopener"><img src="http://77g6ez.com1.z0.glb.clouddn.com/sync.png" alt="img"></a></p>
-<p>Primary上的写入会记录oplog，存储到一个固定大小的<a href="https://docs.mongodb.com/manual/core/capped-collections/?spm=5176.100239.blogcont47336.8.a8boCx" target="_blank" rel="noopener">capped collection</a>里，Secondary主动从Primary上拉取oplog并重放应用到自身，以保持数据与Primary节点上一致。</p>
-<h3 id="initial-sync"><a href="#initial-sync" class="headerlink" title="initial sync"></a>initial sync</h3><p>新节点加入（或者主动向Secondary发送resync）时，Secondary会先进行一次initial sync，即全量同步，遍历Primary上的所有DB的所有集合，将数据拷贝到自身节点，然后读取『全量同步开始到结束时间段内』的oplog并重放。全量同步不是本文讨论的重点，将不作过多的介绍。</p>
-<h3 id="tailing-oplog"><a href="#tailing-oplog" class="headerlink" title="tailing oplog"></a>tailing oplog</h3><p>全量同步结束后，Secondary就开始从结束时间点建立tailable cursor，不断的从同步源拉取oplog并重放应用到自身，这个过程并不是由一个线程来完成的，mongodb为了提升同步效率，将拉取oplog以及重放oplog分到了不同的线程来执行。</p>
-<ul>
-<li>producer thread，这个线程不断的从同步源上拉取oplog，并加入到一个BlockQueue的队列里保存着，BlockQueue最大存储240MB的oplog数据，当超过这个阈值时，就必须等到oplog被replBatcher消费掉才能继续拉取。</li>
-<li>replBatcher thread，这个线程负责逐个从producer thread的队列里取出oplog，并放到自己维护的队列里，这个队列最多允许5000个元素，并且元素总大小不超过512MB，当队列满了时，就需要等待oplogApplication消费掉。</li>
-<li>oplogApplication会取出replBatch thread当前队列的所有元素，并将元素根据docId（如果存储引擎不支持文档锁，则根据集合名称）分散到不同的replWriter线程，replWriter线程将所有的oplog应用到自身；等待所有oplog都应用完毕，oplogApplication线程将所有的oplog顺序写入到local.oplog.rs集合。</li>
-</ul>
-<p>producer的buffer和apply线程的统计信息都可以通过<strong>db.serverStatus().metrics.repl</strong>来查询到，在测试过程中，向Primary模拟约10000 qps的写入，观察Secondary上的同步，写入速率远小于Primary，大致只有3000左右的qps，同时观察到<code>producer的buffer很快就达到饱和，可以判断出oplog重放的线程跟不上</code>。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">replset:PRIMARY&gt; db.serverStatus().metrics.repl.buffer</span><br><span class="line">&#123;</span><br><span class="line">	&quot;count&quot; : NumberLong(0),</span><br><span class="line">	&quot;maxSizeBytes&quot; : 268435456, #256MB</span><br><span class="line">	&quot;sizeBytes&quot; : NumberLong(0) </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>默认情况下，Secondary采用16个replWriter线程来重放oplog，可通过启动时设置replWriterThreadCount参数来定制线程数，当提升线程数到32时，同步的情况大大改观，主备写入的qps基本持平，主备上数据同步的延时控制在1s以内，进一步验证了上述结论。</p>
-<h2 id="改进思路"><a href="#改进思路" class="headerlink" title="改进思路"></a>改进思路</h2><p>如果因Primary上的写入qps很高，经常出现Secondary同步无法追上的问题，可以考虑以下改进思路</p>
-<ul>
-<li>配置更高的replWriterThreadCount，Secondary上加速oplog重放，代价是更高的内存开销</li>
-<li>使用更大的oplog，可按照官方教程<a href="https://docs.mongodb.com/v3.0/tutorial/change-oplog-size/?spm=5176.100239.blogcont47336.9.a8boCx" target="_blank" rel="noopener">修改oplog的大小</a>，<a href="https://www.aliyun.com/product/mongodb/?spm=5176.100239.blogcont47336.10.a8boCx" target="_blank" rel="noopener">阿里云MongoDB数据库</a>增加了patch，能做到在线修改oplog的大小。</li>
-<li>将writeOpsToOplog步骤分散到多个replWriter线程来并发执行，这个是官方目前在考虑的策略之一，参考<a href="https://jira.mongodb.org/browse/SERVER-18908?spm=5176.100239.blogcont47336.11.a8boCx" target="_blank" rel="noopener">Secondaries unable to keep up with primary under WiredTiger</a></li>
-</ul>
-<p>附修改replWriterThreadCount参数的方法，具体应该调整到多少跟Primary上的写入负载如写入qps、平均文档大小等相关，并没有统一的值。</p>
-<ol>
-<li><p>通过mongod命令行来指定</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mongod --setParameter replWriterThreadCount=32</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>在配置文件中指定</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">setParameter:</span><br><span class="line">    replWriterThreadCount: 32</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul>
-<li><a href="https://docs.mongodb.com/manual/core/capped-collections/?spm=5176.100239.blogcont47336.12.a8boCx" target="_blank" rel="noopener">capped collection</a></li>
-<li><a href="https://jira.mongodb.org/browse/SERVER-18908?spm=5176.100239.blogcont47336.13.a8boCx" target="_blank" rel="noopener">SERVER-18908</a></li>
-<li><a href="https://docs.mongodb.com/v3.0/tutorial/change-oplog-size/?spm=5176.100239.blogcont47336.14.a8boCx" target="_blank" rel="noopener">修改oplog的大小</a></li>
-<li><a href="https://www.aliyun.com/product/mongodb/?spm=5176.100239.blogcont47336.15.a8boCx" target="_blank" rel="noopener">阿里云MongoDB数据库</a></li>
-</ul>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">mongodb</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7wj000yznfyao5nk1jn/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-Mongodb幂等性的代价" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjpm8f7wf000uznfyoachw4aa/">Mongodb幂等性的代价</a>
-    </h1>
-  
-
-        
-        <a href="/2018/11/13/cjpm8f7wf000uznfyoachw4aa/" class="archive-article-date">
-  	<time datetime="2018-11-13T06:46:15.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h3 id="幂等性的代价"><a href="#幂等性的代价" class="headerlink" title="幂等性的代价"></a>幂等性的代价</h3><p>MongoDB用于同步的oplog具有一个重要的『幂等』特性，也就是说，一条oplog在备上重放多次，得到的结果跟重放一次结果是一样的，这个特性简化了同步的实现，Secondary不需要有专门的逻辑去保证一条oplog在备上『必须仅能重放』一次。</p>
-<p>为了保证幂等性，记录oplog时，通常需要对写入的请求做一下转换，举个例子，某文档x字段当前值为100，用户向Primary发送一条{inc: {x: 1}}，记录oplog时会转化为一条{inc: {x: 1}}，记录oplog时会转化为一条{set: {x: 101}的操作，才能保证幂等性。</p>
-<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">replset:PRIMARY&gt; db.coll.insert(&#123;"x":[1,2,3,4]&#125;)</span><br><span class="line">WriteResult(&#123; "nInserted" : 1 &#125;)</span><br><span class="line">replset:PRIMARY&gt; db.coll.find()</span><br><span class="line">&#123; <span class="attr">"_id"</span> : ObjectId(<span class="string">"5809d4d5d17cdb2e8ed16a6d"</span>), <span class="attr">"x"</span> : [ <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span> ] &#125;</span><br></pre></td></tr></table></figure>
-<h3 id="push追加数组结尾"><a href="#push追加数组结尾" class="headerlink" title="push追加数组结尾"></a>push追加数组结尾</h3><p>在数组尾部push 2个元素，查看oplog发现push操作被转换为了push操作被转换为了set操作（设置数组指定位置的元素为某个值）。</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">replset:PRIMARY&gt; db.coll.update(&#123;&#125;, &#123;$push: &#123;x: &#123; $each: [4, 5] &#125;&#125;&#125;)</span><br><span class="line">WriteResult(&#123; "nMatched" : 1, "nUpserted" : 0, "nModified" : 1 &#125;)</span><br><span class="line"></span><br><span class="line">replset:PRIMARY&gt; db.getSiblingDB("local").oplog.rs.find().sort(&#123;$natural: -1&#125;).limit(1).pretty()</span><br><span class="line">&#123;</span><br><span class="line">	"ts" : Timestamp(1477039431, 1),</span><br><span class="line">	"t" : NumberLong(1),</span><br><span class="line">	"h" : NumberLong("-6218524993105847165"),</span><br><span class="line">	"v" : 2,</span><br><span class="line">	"op" : "u",</span><br><span class="line">	"ns" : "wangxi.coll",</span><br><span class="line">	"o2" : &#123;</span><br><span class="line">		"_id" : ObjectId("5809d4d5d17cdb2e8ed16a6d")</span><br><span class="line">	&#125;,</span><br><span class="line">	"o" : &#123;</span><br><span class="line">		"$set" : &#123;</span><br><span class="line">			"x.4" : 4,    </span><br><span class="line">			"x.5" : 5	 </span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"># $push转换为带具体位置的$set</span><br></pre></td></tr></table></figure>
-<h3 id="push修改数组头部"><a href="#push修改数组头部" class="headerlink" title="push修改数组头部"></a>push修改数组头部</h3><p>push转换为带具体位置的$set开销上也差不多，但接下来再看看往数组的头部添加2个元素</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">replset:PRIMARY&gt; db.coll.update(&#123;&#125;, &#123;$push: &#123;x: &#123; $each: [6, 7], $position: 0 &#125;&#125;&#125;)</span><br><span class="line">WriteResult(&#123; "nMatched" : 1, "nUpserted" : 0, "nModified" : 1 &#125;)</span><br><span class="line">replset:PRIMARY&gt; db.coll.find()</span><br><span class="line">&#123; <span class="attr">"_id"</span> : ObjectId(<span class="string">"5809d4d5d17cdb2e8ed16a6d"</span>), <span class="attr">"x"</span> : [ <span class="number">6</span>, <span class="number">7</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">4</span>, <span class="number">5</span> ] &#125;</span><br><span class="line"></span><br><span class="line">replset:PRIMARY&gt; db.getSiblingDB("local").oplog.rs.find().sort(&#123;$natural: -1&#125;).limit(1).pretty()</span><br><span class="line">&#123;</span><br><span class="line">	"ts" : Timestamp(1477039744, 1),</span><br><span class="line">	"t" : NumberLong(1),</span><br><span class="line">	"h" : NumberLong("-7873782335047957042"),</span><br><span class="line">	"v" : 2,</span><br><span class="line">	"op" : "u",</span><br><span class="line">	"ns" : "wangxi.coll",</span><br><span class="line">	"o2" : &#123;</span><br><span class="line">		"_id" : ObjectId("5809d4d5d17cdb2e8ed16a6d")</span><br><span class="line">	&#125;,</span><br><span class="line">	"o" : &#123;</span><br><span class="line">		"$set" : &#123;</span><br><span class="line">			"x" : [</span><br><span class="line">				6,</span><br><span class="line">				7,</span><br><span class="line">				1,</span><br><span class="line">				2,</span><br><span class="line">				3,</span><br><span class="line">				4,</span><br><span class="line">				4,</span><br><span class="line">				<span class="number">5</span></span><br><span class="line">			]</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"># oplog里会转换成$set数组的全部内容，$pull, $addToSet同理</span><br></pre></td></tr></table></figure>
-<p>可以发现，当向数组的头部添加元素时，oplog里的set操作不再是设置数组某个位置的值（因为基本所有的元素位置都调整了），而是set操作不再是设置数组某个位置的值（因为基本所有的元素位置都调整了），而是set数组最终的结果，即整个数组的内容都要写入oplog。当push操作指定了slice或者slice或者sort参数时，oplog的记录方式也是一样的，会将整个数组的内容作为$set的参数。</p>
-<p>pull,pull,addToSet等更新操作符也是类似，更新数组后，oplog里会转换成$set数组的最终内容，才能保证幂等性。</p>
-<h3 id="参考"><a href="#参考" class="headerlink" title="参考:"></a>参考:</h3><p> <a href="https://yq.aliyun.com/articles/52404?spm=5176.8091938.0.0.6wi7eh" target="_blank" rel="noopener">MongoDB Secondary同步慢问题分析</a></p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">mongodb</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjpm8f7wf000uznfyoachw4aa/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/cjzmeyv8a0021z5fya0dpk0hq/">展开全文 >></a>
         </p>
       
 
@@ -1458,7 +1601,7 @@
   <div class="outer">
     <div id="footer-info">
     	<div class="footer-left">
-    		&copy; 2018 Xi Wang
+    		&copy; 2019 Xi Wang
     	</div>
       	<div class="footer-right">
       		<a href="http://hexo.io/" target="_blank">Hexo</a>  Theme <a href="https://github.com/litten/hexo-theme-yilia" target="_blank">Yilia</a> by Litten
@@ -1553,19 +1696,7 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color2">docker</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">ceph</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">kubernetes</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">linux</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1573,11 +1704,39 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color2">docker</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">linux</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">mongodb</a>
               </li>
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">kubernetes</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">big data</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">oracle</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">alluxio</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">brew</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">hive</a>
               </li>
              
               <li class="article-tag-list-item">
