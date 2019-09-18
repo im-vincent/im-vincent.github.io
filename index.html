@@ -152,6 +152,132 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-linux-下创建虚拟环境-python" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/09/18/ck0ox6r8g00320efygemscz9q/">linux 下创建虚拟环境 python</a>
+    </h1>
+  
+
+        
+        <a href="/2019/09/18/ck0ox6r8g00320efygemscz9q/" class="archive-article-date">
+  	<time datetime="2019-09-18T07:02:38.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-09-18</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="linux-下创建虚拟环境-python"><a href="#linux-下创建虚拟环境-python" class="headerlink" title="linux 下创建虚拟环境 python"></a>linux 下创建虚拟环境 python</h1><p>virtualenv是一个可以在同一计算机中隔离多个python版本的工具。有时，两个不同的项目可能需要不同版本的python，如 python2.7 / python3.6 ，但是如果都装到一起，经常会导致问题。virtualenv能够用于创建独立的Python虚拟环境，多个Python相互独立，互不影响。<br>virtualenvwrapper这个软件包可以让我们管理虚拟环境变得更加简单。不用再跑到某个目录下通过virtualenv来创建虚拟环境，并且激活的时候也要跑到具体的目录下去激活。</p>
+<p>下面介绍安装python虚拟环境的方法：</p>
+<p>使用pip安装包前，先更新pip。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># pip3 install --upgrade pip</span><br></pre></td></tr></table></figure>
+<p><strong>1. 安装virtualenv、virtualenvwrapper</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># pip3 install virtualenv</span><br><span class="line"># pip3 install virtualenvwrapper</span><br></pre></td></tr></table></figure>
+<p><strong>2. 进入.bashrc文件中，定义virtualenvwrapper路径</strong></p>
+<p>使用vim编辑.bashrc文件</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># vim ~/.bashrc</span><br></pre></td></tr></table></figure>
+<p>在文末填入以下代码并保存</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">VIRTUALENVWRAPPER_PYTHON=/usr/local/python3/bin/python3    # 指定virtualenvwrapper执行的python版本</span><br><span class="line">export WORKON_HOME=$HOME/.virtualenvs    # 指定虚拟环境存放目录，.virtualenvs目录名可自拟</span><br><span class="line">source /usr/local/bin/virtualenvwrapper.sh    # virtualenvwrapper.sh所在目录</span><br></pre></td></tr></table></figure>
+<p><strong>3. 运行.bashrc文件</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># source ~/.bashrc</span><br></pre></td></tr></table></figure>
+<p><strong>4. 创建虚拟环境</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># mkvirtualenv py3-env</span><br></pre></td></tr></table></figure>
+<p>也可指定虚拟环境的python版本</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># mkvirtualenv --python=/usr/bin/python3 py3-env</span><br></pre></td></tr></table></figure>
+<p><strong>5. 进入虚拟环境中，然后进入到项目所在目录，安装好相应的包（如无需要，可跳过此步）</strong></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">#  pip install -r requirements.txt</span><br></pre></td></tr></table></figure>
+<p>虚拟环境搭建完成！</p>
+<p><strong>常见的virtualenvwrapper命令</strong></p>
+<ul>
+<li>创建虚拟环境</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># mkvirtualenv my_env</span><br></pre></td></tr></table></figure>
+<ul>
+<li>切换到某个虚拟环境</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># workon my_env</span><br></pre></td></tr></table></figure>
+<ul>
+<li>退出当前虚拟环境</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># deactivate</span><br></pre></td></tr></table></figure>
+<ul>
+<li>删除某个虚拟环境</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># rmvirtualenv my_env</span><br></pre></td></tr></table></figure>
+<ul>
+<li>列出所有虚拟环境</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># lsvirtualenv</span><br></pre></td></tr></table></figure>
+<ul>
+<li>进入到虚拟环境所在的目录</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># cdvirtualenv</span><br></pre></td></tr></table></figure>
+<h2 id="————————————————————————–"><a href="#————————————————————————–" class="headerlink" title="————————————————————————–"></a>————————————————————————–</h2><p>1 安装虚拟环境<br>sudo pip install virtualenv<br>sudo pip install virtualenvwrapper</p>
+<p>2 激活虚拟环境<br>source virtualenvwrapper.sh</p>
+<p>3 创建虚拟环境<br>mkvirtualenv -p (编译地址) /usr/bin/pyhon3 (名称) py3</p>
+<p>4 若出现未找到命令这种错误就再次激活虚拟环境</p>
+<p>5 进入虚拟环境<br>workon py3</p>
+<p>6 退出虚拟环境<br>deactivate</p>
+<h2 id=""><a href="#" class="headerlink" title=" "></a> </h2><h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><p>virtualenvwrapper装好后, 发现使用<code>mkvirtualenv XX</code>时, 又找不到virtualenv了… <code>apt install python3-virtualenv</code>的virtualenv找不到, <code>apt install virtualenv</code>的virtualenv又报缺少python2的path.</p>
+<h2 id="解决"><a href="#解决" class="headerlink" title="解决:"></a>解决:</h2><p>我又想起了上个问题的解决方法, 在<code>~/.local/bin/</code>下找到了<code>virtualenv</code>文件, 这可能就是<code>python3-virtualenv</code>所对应的了, 再将其拷贝至<code>/usr/bin/</code>目录下, 即可.</p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">python</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/09/18/ck0ox6r8g00320efygemscz9q/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-alluxio-ha-cluster" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
   <div class="article-inner">
     
@@ -159,12 +285,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2019/08/22/cjzmeyv87001uz5fy4yvkqvvi/">alluxio ha cluster</a>
+      <a class="article-title" href="/2019/08/22/ck0ox6r8b002w0efyupocsqvw/">alluxio ha cluster</a>
     </h1>
   
 
         
-        <a href="/2019/08/22/cjzmeyv87001uz5fy4yvkqvvi/" class="archive-article-date">
+        <a href="/2019/08/22/ck0ox6r8b002w0efyupocsqvw/" class="archive-article-date">
   	<time datetime="2019-08-22T08:16:20.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-08-22</time>
 </a>
         
@@ -200,7 +326,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2019/08/22/cjzmeyv87001uz5fy4yvkqvvi/">展开全文 >></a>
+          <a class="article-more-a" href="/2019/08/22/ck0ox6r8b002w0efyupocsqvw/">展开全文 >></a>
         </p>
       
 
@@ -237,12 +363,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2019/03/22/cjzmeyv8h002ez5fyc5jm1w69/">基于hive进行简单压缩技术测试</a>
+      <a class="article-title" href="/2019/03/22/ck0ox6r8h00340efyeuseamzh/">基于hive进行简单压缩技术测试</a>
     </h1>
   
 
         
-        <a href="/2019/03/22/cjzmeyv8h002ez5fyc5jm1w69/" class="archive-article-date">
+        <a href="/2019/03/22/ck0ox6r8h00340efyeuseamzh/" class="archive-article-date">
   	<time datetime="2019-03-22T06:20:06.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-03-22</time>
 </a>
         
@@ -295,7 +421,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2019/03/22/cjzmeyv8h002ez5fyc5jm1w69/">展开全文 >></a>
+          <a class="article-more-a" href="/2019/03/22/ck0ox6r8h00340efyeuseamzh/">展开全文 >></a>
         </p>
       
 
@@ -332,12 +458,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2019/03/19/cjzmeyv7s000zz5fyt0cty4bv/">Hadoop 小文件引发的血案</a>
+      <a class="article-title" href="/2019/03/19/ck0ox6r67000b0efypdxynrxo/">Hadoop 小文件引发的血案</a>
     </h1>
   
 
         
-        <a href="/2019/03/19/cjzmeyv7s000zz5fyt0cty4bv/" class="archive-article-date">
+        <a href="/2019/03/19/ck0ox6r67000b0efypdxynrxo/" class="archive-article-date">
   	<time datetime="2019-03-19T07:32:03.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-03-19</time>
 </a>
         
@@ -429,7 +555,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2019/03/19/cjzmeyv7s000zz5fyt0cty4bv/">展开全文 >></a>
+          <a class="article-more-a" href="/2019/03/19/ck0ox6r67000b0efypdxynrxo/">展开全文 >></a>
         </p>
       
 
@@ -466,12 +592,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2019/02/15/cjzmeyv88001wz5fyll3704ka/">Oracle pl/sql学习记录</a>
+      <a class="article-title" href="/2019/02/15/ck0ox6r6w001a0efyjs2pwldj/">Oracle pl/sql学习记录</a>
     </h1>
   
 
         
-        <a href="/2019/02/15/cjzmeyv88001wz5fyll3704ka/" class="archive-article-date">
+        <a href="/2019/02/15/ck0ox6r6w001a0efyjs2pwldj/" class="archive-article-date">
   	<time datetime="2019-02-15T08:44:11.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-02-15</time>
 </a>
         
@@ -491,7 +617,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2019/02/15/cjzmeyv88001wz5fyll3704ka/">展开全文 >></a>
+          <a class="article-more-a" href="/2019/02/15/ck0ox6r6w001a0efyjs2pwldj/">展开全文 >></a>
         </p>
       
 
@@ -528,12 +654,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2019/01/24/cjzmeyv8g002bz5fywcozb8e3/">brew 安装执行版本golang</a>
+      <a class="article-title" href="/2019/01/24/ck0ox6r88002t0efy3muz63sv/">brew 安装执行版本golang</a>
     </h1>
   
 
         
-        <a href="/2019/01/24/cjzmeyv8g002bz5fywcozb8e3/" class="archive-article-date">
+        <a href="/2019/01/24/ck0ox6r88002t0efy3muz63sv/" class="archive-article-date">
   	<time datetime="2019-01-24T01:31:35.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-01-24</time>
 </a>
         
@@ -571,7 +697,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2019/01/24/cjzmeyv8g002bz5fywcozb8e3/">展开全文 >></a>
+          <a class="article-more-a" href="/2019/01/24/ck0ox6r88002t0efy3muz63sv/">展开全文 >></a>
         </p>
       
 
@@ -621,7 +747,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/12/13/cjzmeyv8d0026z5fyfcabm9qi/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/12/13/ck0ox6r86002r0efy99smbjjv/">展开全文 >></a>
         </p>
       
 
@@ -658,12 +784,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/12/10/cjzmeyv89001zz5fy5jsdiqf1/">Oracle asm变更物理磁盘</a>
+      <a class="article-title" href="/2018/12/10/ck0ox6r6v00180efyh4hcx50f/">Oracle asm变更物理磁盘</a>
     </h1>
   
 
         
-        <a href="/2018/12/10/cjzmeyv89001zz5fy5jsdiqf1/" class="archive-article-date">
+        <a href="/2018/12/10/ck0ox6r6v00180efyh4hcx50f/" class="archive-article-date">
   	<time datetime="2018-12-10T06:25:18.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-12-10</time>
 </a>
         
@@ -714,7 +840,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/12/10/cjzmeyv89001zz5fy5jsdiqf1/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/12/10/ck0ox6r6v00180efyh4hcx50f/">展开全文 >></a>
         </p>
       
 
@@ -751,12 +877,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/21/cjzmeyv8c0024z5fyouu0umut/">pip 变更阿里源</a>
+      <a class="article-title" href="/2018/11/21/ck0ox6r8a002u0efydnplge4i/">pip 变更阿里源</a>
     </h1>
   
 
         
-        <a href="/2018/11/21/cjzmeyv8c0024z5fyouu0umut/" class="archive-article-date">
+        <a href="/2018/11/21/ck0ox6r8a002u0efydnplge4i/" class="archive-article-date">
   	<time datetime="2018-11-21T05:31:46.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-21</time>
 </a>
         
@@ -788,7 +914,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/21/cjzmeyv8c0024z5fyouu0umut/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/21/ck0ox6r8a002u0efydnplge4i/">展开全文 >></a>
         </p>
       
 
@@ -825,12 +951,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjzmeyv7x001bz5fy1e1rvnsk/">Linux-使用ntp服务时间同步</a>
+      <a class="article-title" href="/2018/11/13/ck0ox6r6c000i0efy9bpsj9h7/">Linux-使用ntp服务时间同步</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/cjzmeyv7x001bz5fy1e1rvnsk/" class="archive-article-date">
+        <a href="/2018/11/13/ck0ox6r6c000i0efy9bpsj9h7/" class="archive-article-date">
   	<time datetime="2018-11-13T08:59:58.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -895,116 +1021,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjzmeyv7x001bz5fy1e1rvnsk/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-Deep-learning-使用云GPU主机配置" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/cjzmeyv7b000ez5fy3bbhroor/">Deep learning 使用云GPU主机配置</a>
-    </h1>
-  
-
-        
-        <a href="/2018/11/13/cjzmeyv7b000ez5fy3bbhroor/" class="archive-article-date">
-  	<time datetime="2018-11-13T08:08:21.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="GPU云主机配置"><a href="#GPU云主机配置" class="headerlink" title="GPU云主机配置"></a>GPU云主机配置</h1><p>深度学习对计算要求太高了，没有高配的电脑，只好搭建GPU云主机。使用价格相对便宜的滴滴云。</p>
-<ul>
-<li>GPU主机的基本配置</li>
-<li>anaconda的安装和依赖包的安装</li>
-<li>jupyter_notebooks的使用</li>
-</ul>
-<h2 id="配置主机"><a href="#配置主机" class="headerlink" title="配置主机"></a>配置主机</h2><p>控制台-&gt;创建云服务器-&gt;GPU云服务器-&gt;选择镜像(一定选择gpu驱动的)</p>
-<p>网络带宽这块由于初始需要安装更新，建议使用10M左右的贷款。以为云是按时间计费的，网络慢在时间上花的钱会更多。</p>
-<p>等分配公网ip后可以使用ssh工具登陆了。</p>
-<h2 id="anconda3安装"><a href="#anconda3安装" class="headerlink" title="anconda3安装"></a>anconda3安装</h2><p>首先安装anconda3，使用的是清华下载镜像，国外网速会超级慢，用wget下载安装文件</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">wget https://mirrors.tuna.tsinghua.edu.cn/anaconda/archive/Anaconda3-5.2.0-Linux-x86_64.sh</span><br><span class="line"></span><br><span class="line">sh Anaconda3-5.2.0-Linux-x86_64.sh</span><br></pre></td></tr></table></figure>
-<p>设置anaconda install源：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">conda config --add channels &apos;https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/&apos;</span><br><span class="line">conda config --set show_channel_urls yes</span><br></pre></td></tr></table></figure>
-<h2 id="jupyter-notebook的使用"><a href="#jupyter-notebook的使用" class="headerlink" title="jupyter notebook的使用"></a>jupyter notebook的使用</h2><p>创建jupyter notebook环境，附带的会安装一些依赖包。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">conda create -n jupyter_notebook python=3</span><br></pre></td></tr></table></figure>
-<p>激活环境</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">source activate jupyter_notebook</span><br></pre></td></tr></table></figure>
-<p>jupyter notebook环境中安装依赖包</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">coda install jupyter notebook</span><br></pre></td></tr></table></figure>
-<p>tensorflow-gpu安装</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># 默认会安装1.3然后和本地写出来的程序不兼容，更新最新的也会报错。无奈使用1.4</span><br><span class="line">conda install tensorflow-gpu=1.4</span><br></pre></td></tr></table></figure>
-<p>测试显卡：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">In [1]: import tensorflow as tf</span><br><span class="line">In [2]: print(&apos;tensorflow version:&#123;&#125;&apos;.format(tf.__version__))</span><br><span class="line">tensorflow version:1.3.0</span><br><span class="line">In [3]: print(&apos;default gpu device &#123;&#125;&apos;.format(tf.test.gpu_device_name()))</span><br><span class="line">device: 0, name: Tesla M60, pci bus id: 0000:00:15.0</span><br></pre></td></tr></table></figure>
-<p>jupyter notebook的配置：<br>需要生成jupyter notebook配置文件</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">(jupyter_notebook) tream@Tream733:/root$ jupyter notebook --generate-config</span><br><span class="line">Writing default config to: /home/tream/.jupyter/jupyter_notebook_config.py12</span><br></pre></td></tr></table></figure>
-<p>调用ipython设置jupyter notebook密码</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">(jupyter_notebook) tream@Tream733:/root$ ipython</span><br><span class="line">Python 3.6.2 |Continuum Analytics, Inc.| (default, Jul 20 2017, 13:51:32) </span><br><span class="line">Type &apos;copyright&apos;, &apos;credits&apos; or &apos;license&apos; for more information</span><br><span class="line">IPython 6.1.0 -- An enhanced Interactive Python. Type &apos;?&apos; for help.</span><br><span class="line">In [1]: from notebook.auth import passwd</span><br><span class="line">In [2]: passwd()</span><br><span class="line">Enter password: </span><br><span class="line">Verify password: </span><br><span class="line">Out[2]: &apos;sha1:b804cd47ff66:7c1d4a54809c54c356ae406b05c4c50767cc7958&apos;</span><br><span class="line">In [3]: exit</span><br></pre></td></tr></table></figure>
-<blockquote>
-<p>记录下’sha1:b804cd47ff66:7c1d4a54809c54c356ae406b05c4c50767cc7958’，在文件配置时候要用。<br>配置jupyter notebook的config文件</p>
-</blockquote>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">tream@Tream733:/root$ vi /home/tream/.jupyter/jupyter_notebook_config.py1</span><br><span class="line">c.NotebookApp.ip = &apos;*&apos;</span><br><span class="line">c.NotebookApp.password = &apos;sha1:b804cd47ff66:7c1d4a54809c54c356ae406b05c4c50767cc7958&apos;</span><br><span class="line">c.NotebookApp.open_browser = False</span><br></pre></td></tr></table></figure>
-<p>启动</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">jupyter notebook</span><br></pre></td></tr></table></figure>
-<hr>
-<p>保存快照，设置暴露8888端口就可以愉快的使用了。</p>
-<p>使用完了记得要删除云主机，下次使用的时候用快照恢复就可以。 快照有免费的20G额度。</p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">deep learning</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/cjzmeyv7b000ez5fy3bbhroor/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/ck0ox6r6c000i0efy9bpsj9h7/">展开全文 >></a>
         </p>
       
 
@@ -1036,7 +1053,7 @@
   
   
     <nav id="page-nav">
-      <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><a class="page-number" href="/page/4/">4</a><a class="extend next" rel="next" href="/page/2/">Next &raquo;</a>
+      <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><span class="space">&hellip;</span><a class="page-number" href="/page/5/">5</a><a class="extend next" rel="next" href="/page/2/">Next &raquo;</a>
     </nav>
   
 
@@ -1147,19 +1164,11 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">deep learning</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">docker</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">linux</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">mongodb</a>
+                <a href="javascript:void(0)" class="js-tag color4">deep learning</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1171,11 +1180,19 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color2">oracle</a>
+                <a href="javascript:void(0)" class="js-tag color1">linux</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">alluxio</a>
+                <a href="javascript:void(0)" class="js-tag color3">mongodb</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color1">mysql</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color2">oracle</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -1183,11 +1200,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">hive</a>
+                <a href="javascript:void(0)" class="js-tag color3">alluxio</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color1">mysql</a>
+                <a href="javascript:void(0)" class="js-tag color2">python</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">hive</a>
               </li>
             
             <div class="clearfix"></div>

@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://vincentwang.top/"/>
-  <updated>2019-08-22T08:18:08.126Z</updated>
+  <updated>2019-09-18T07:03:24.970Z</updated>
   <id>http://vincentwang.top/</id>
   
   <author>
@@ -17,9 +17,32 @@
   <generator uri="http://hexo.io/">Hexo</generator>
   
   <entry>
+    <title>linux 下创建虚拟环境 python</title>
+    <link href="http://vincentwang.top/2019/09/18/ck0ox6r8g00320efygemscz9q/"/>
+    <id>http://vincentwang.top/2019/09/18/ck0ox6r8g00320efygemscz9q/</id>
+    <published>2019-09-18T07:02:38.000Z</published>
+    <updated>2019-09-18T07:03:24.970Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="linux-下创建虚拟环境-python"><a href="#linux-下创建虚拟环境-python" class="headerlink" title="linux 下创建虚拟环境 python"></a>linux 下创建虚拟环境 python</h1><p>virtualenv是一个可以在同一计算机中隔离多个python版本的工具。有时，两个不同的项目可能需要不同版本的python，如 python2.7 / python3.6 ，但是如果都装到一起，经常会导致问题。virtualenv能够用于创建独立的Python虚拟环境，多个Python相互独立，互不影响。<br>virtualenvwrapper这个软件包可以让我们管理虚拟环境变得更加简单。不用再跑到某个目录下通过virtualenv来创建虚拟环境，并且激活的时候也要跑到具体的目录下去激活。</p><p>下面介绍安装python虚拟环境的方法：</p><p>使用pip安装包前，先更新pip。</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># pip3 install --upgrade pip</span><br></pre></td></tr></table></figure><p><strong>1. 安装virtualenv、virtualenvwrapper</strong></p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># pip3 install virtualenv</span><br><span class="line"># pip3 install virtualenvwrapper</span><br></pre></td></tr></table></figure><p><strong>2. 进入.bashrc文件中，定义virtualenvwrapper路径</strong></p><p>使用vim编辑.bashrc文件</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># vim ~/.bashrc</span><br></pre></td></tr></table></figure><p>在文末填入以下代码并保存</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">VIRTUALENVWRAPPER_PYTHON=/usr/local/python3/bin/python3    # 指定virtualenvwrapper执行的python版本</span><br><span class="line">export WORKON_HOME=$HOME/.virtualenvs    # 指定虚拟环境存放目录，.virtualenvs目录名可自拟</span><br><span class="line">source /usr/local/bin/virtualenvwrapper.sh    # virtualenvwrapper.sh所在目录</span><br></pre></td></tr></table></figure><p><strong>3. 运行.bashrc文件</strong></p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># source ~/.bashrc</span><br></pre></td></tr></table></figure><p><strong>4. 创建虚拟环境</strong></p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># mkvirtualenv py3-env</span><br></pre></td></tr></table></figure><p>也可指定虚拟环境的python版本</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># mkvirtualenv --python=/usr/bin/python3 py3-env</span><br></pre></td></tr></table></figure><p><strong>5. 进入虚拟环境中，然后进入到项目所在目录，安装好相应的包（如无需要，可跳过此步）</strong></p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">#  pip install -r requirements.txt</span><br></pre></td></tr></table></figure><p>虚拟环境搭建完成！</p><p><strong>常见的virtualenvwrapper命令</strong></p><ul><li>创建虚拟环境</li></ul><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># mkvirtualenv my_env</span><br></pre></td></tr></table></figure><ul><li>切换到某个虚拟环境</li></ul><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># workon my_env</span><br></pre></td></tr></table></figure><ul><li>退出当前虚拟环境</li></ul><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># deactivate</span><br></pre></td></tr></table></figure><ul><li>删除某个虚拟环境</li></ul><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># rmvirtualenv my_env</span><br></pre></td></tr></table></figure><ul><li>列出所有虚拟环境</li></ul><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># lsvirtualenv</span><br></pre></td></tr></table></figure><ul><li>进入到虚拟环境所在的目录</li></ul><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># cdvirtualenv</span><br></pre></td></tr></table></figure><h2 id="————————————————————————–"><a href="#————————————————————————–" class="headerlink" title="————————————————————————–"></a>————————————————————————–</h2><p>1 安装虚拟环境<br>sudo pip install virtualenv<br>sudo pip install virtualenvwrapper</p><p>2 激活虚拟环境<br>source virtualenvwrapper.sh</p><p>3 创建虚拟环境<br>mkvirtualenv -p (编译地址) /usr/bin/pyhon3 (名称) py3</p><p>4 若出现未找到命令这种错误就再次激活虚拟环境</p><p>5 进入虚拟环境<br>workon py3</p><p>6 退出虚拟环境<br>deactivate</p><h2 id=""><a href="#" class="headerlink" title=" "></a> </h2><h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><p>virtualenvwrapper装好后, 发现使用<code>mkvirtualenv XX</code>时, 又找不到virtualenv了… <code>apt install python3-virtualenv</code>的virtualenv找不到, <code>apt install virtualenv</code>的virtualenv又报缺少python2的path.</p><h2 id="解决"><a href="#解决" class="headerlink" title="解决:"></a>解决:</h2><p>我又想起了上个问题的解决方法, 在<code>~/.local/bin/</code>下找到了<code>virtualenv</code>文件, 这可能就是<code>python3-virtualenv</code>所对应的了, 再将其拷贝至<code>/usr/bin/</code>目录下, 即可.</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h1 id=&quot;linux-下创建虚拟环境-python&quot;&gt;&lt;a href=&quot;#linux-下创建虚拟环境-python&quot; class=&quot;headerlink&quot; title=&quot;linux 下创建虚拟环境 python&quot;&gt;&lt;/a&gt;linux 下创建虚拟环境 python&lt;/h1&gt;&lt;
+      
+    
+    </summary>
+    
+    
+      <category term="python" scheme="http://vincentwang.top/tags/python/"/>
+    
+  </entry>
+  
+  <entry>
     <title>alluxio ha cluster</title>
-    <link href="http://vincentwang.top/2019/08/22/cjzmeyv87001uz5fy4yvkqvvi/"/>
-    <id>http://vincentwang.top/2019/08/22/cjzmeyv87001uz5fy4yvkqvvi/</id>
+    <link href="http://vincentwang.top/2019/08/22/ck0ox6r8b002w0efyupocsqvw/"/>
+    <id>http://vincentwang.top/2019/08/22/ck0ox6r8b002w0efyupocsqvw/</id>
     <published>2019-08-22T08:16:20.000Z</published>
     <updated>2019-08-22T08:18:08.126Z</updated>
     
@@ -41,8 +64,8 @@
   
   <entry>
     <title>基于hive进行简单压缩技术测试</title>
-    <link href="http://vincentwang.top/2019/03/22/cjzmeyv8h002ez5fyc5jm1w69/"/>
-    <id>http://vincentwang.top/2019/03/22/cjzmeyv8h002ez5fyc5jm1w69/</id>
+    <link href="http://vincentwang.top/2019/03/22/ck0ox6r8h00340efyeuseamzh/"/>
+    <id>http://vincentwang.top/2019/03/22/ck0ox6r8h00340efyeuseamzh/</id>
     <published>2019-03-22T06:20:06.000Z</published>
     <updated>2019-03-22T06:21:33.970Z</updated>
     
@@ -67,8 +90,8 @@
   
   <entry>
     <title>Hadoop 小文件引发的血案</title>
-    <link href="http://vincentwang.top/2019/03/19/cjzmeyv7s000zz5fyt0cty4bv/"/>
-    <id>http://vincentwang.top/2019/03/19/cjzmeyv7s000zz5fyt0cty4bv/</id>
+    <link href="http://vincentwang.top/2019/03/19/ck0ox6r67000b0efypdxynrxo/"/>
+    <id>http://vincentwang.top/2019/03/19/ck0ox6r67000b0efypdxynrxo/</id>
     <published>2019-03-19T07:32:03.000Z</published>
     <updated>2019-03-19T08:58:01.790Z</updated>
     
@@ -92,8 +115,8 @@
   
   <entry>
     <title>Oracle pl/sql学习记录</title>
-    <link href="http://vincentwang.top/2019/02/15/cjzmeyv88001wz5fyll3704ka/"/>
-    <id>http://vincentwang.top/2019/02/15/cjzmeyv88001wz5fyll3704ka/</id>
+    <link href="http://vincentwang.top/2019/02/15/ck0ox6r6w001a0efyjs2pwldj/"/>
+    <id>http://vincentwang.top/2019/02/15/ck0ox6r6w001a0efyjs2pwldj/</id>
     <published>2019-02-15T08:44:11.000Z</published>
     <updated>2019-02-15T08:44:11.430Z</updated>
     
@@ -106,8 +129,8 @@
   
   <entry>
     <title>brew 安装执行版本golang</title>
-    <link href="http://vincentwang.top/2019/01/24/cjzmeyv8g002bz5fywcozb8e3/"/>
-    <id>http://vincentwang.top/2019/01/24/cjzmeyv8g002bz5fywcozb8e3/</id>
+    <link href="http://vincentwang.top/2019/01/24/ck0ox6r88002t0efy3muz63sv/"/>
+    <id>http://vincentwang.top/2019/01/24/ck0ox6r88002t0efy3muz63sv/</id>
     <published>2019-01-24T01:31:35.000Z</published>
     <updated>2019-01-24T01:36:33.572Z</updated>
     
@@ -132,8 +155,8 @@
   
   <entry>
     <title></title>
-    <link href="http://vincentwang.top/2018/12/13/cjzmeyv8d0026z5fyfcabm9qi/"/>
-    <id>http://vincentwang.top/2018/12/13/cjzmeyv8d0026z5fyfcabm9qi/</id>
+    <link href="http://vincentwang.top/2018/12/13/ck0ox6r86002r0efy99smbjjv/"/>
+    <id>http://vincentwang.top/2018/12/13/ck0ox6r86002r0efy99smbjjv/</id>
     <published>2018-12-13T06:42:29.550Z</published>
     <updated>2018-12-13T06:42:29.550Z</updated>
     
@@ -155,8 +178,8 @@
   
   <entry>
     <title>Oracle asm变更物理磁盘</title>
-    <link href="http://vincentwang.top/2018/12/10/cjzmeyv89001zz5fy5jsdiqf1/"/>
-    <id>http://vincentwang.top/2018/12/10/cjzmeyv89001zz5fy5jsdiqf1/</id>
+    <link href="http://vincentwang.top/2018/12/10/ck0ox6r6v00180efyh4hcx50f/"/>
+    <id>http://vincentwang.top/2018/12/10/ck0ox6r6v00180efyh4hcx50f/</id>
     <published>2018-12-10T06:25:18.000Z</published>
     <updated>2018-12-10T06:25:59.197Z</updated>
     
@@ -178,8 +201,8 @@
   
   <entry>
     <title>pip 变更阿里源</title>
-    <link href="http://vincentwang.top/2018/11/21/cjzmeyv8c0024z5fyouu0umut/"/>
-    <id>http://vincentwang.top/2018/11/21/cjzmeyv8c0024z5fyouu0umut/</id>
+    <link href="http://vincentwang.top/2018/11/21/ck0ox6r8a002u0efydnplge4i/"/>
+    <id>http://vincentwang.top/2018/11/21/ck0ox6r8a002u0efydnplge4i/</id>
     <published>2018-11-21T05:31:46.000Z</published>
     <updated>2018-11-21T05:32:20.255Z</updated>
     
@@ -201,8 +224,8 @@
   
   <entry>
     <title>Linux-使用ntp服务时间同步</title>
-    <link href="http://vincentwang.top/2018/11/13/cjzmeyv7x001bz5fy1e1rvnsk/"/>
-    <id>http://vincentwang.top/2018/11/13/cjzmeyv7x001bz5fy1e1rvnsk/</id>
+    <link href="http://vincentwang.top/2018/11/13/ck0ox6r6c000i0efy9bpsj9h7/"/>
+    <id>http://vincentwang.top/2018/11/13/ck0ox6r6c000i0efy9bpsj9h7/</id>
     <published>2018-11-13T08:59:58.000Z</published>
     <updated>2018-11-13T09:00:33.503Z</updated>
     
@@ -225,8 +248,8 @@
   
   <entry>
     <title>Deep learning 使用云GPU主机配置</title>
-    <link href="http://vincentwang.top/2018/11/13/cjzmeyv7b000ez5fy3bbhroor/"/>
-    <id>http://vincentwang.top/2018/11/13/cjzmeyv7b000ez5fy3bbhroor/</id>
+    <link href="http://vincentwang.top/2018/11/13/ck0ox6r6400070efy06fx5h9y/"/>
+    <id>http://vincentwang.top/2018/11/13/ck0ox6r6400070efy06fx5h9y/</id>
     <published>2018-11-13T08:08:21.000Z</published>
     <updated>2018-11-13T08:08:58.943Z</updated>
     
@@ -248,8 +271,8 @@
   
   <entry>
     <title>Linux lvm逻辑卷扩展文件系统</title>
-    <link href="http://vincentwang.top/2018/11/13/cjzmeyv7e000iz5fysbrienci/"/>
-    <id>http://vincentwang.top/2018/11/13/cjzmeyv7e000iz5fysbrienci/</id>
+    <link href="http://vincentwang.top/2018/11/13/ck0ox6r6h000n0efy06urp1tu/"/>
+    <id>http://vincentwang.top/2018/11/13/ck0ox6r6h000n0efy06urp1tu/</id>
     <published>2018-11-13T08:06:23.000Z</published>
     <updated>2018-11-13T08:06:39.033Z</updated>
     
@@ -273,8 +296,8 @@
   
   <entry>
     <title>Oracle asm变更磁盘组恢复数据文件</title>
-    <link href="http://vincentwang.top/2018/11/13/cjzmeyv7y001ez5fy6fpqvwrh/"/>
-    <id>http://vincentwang.top/2018/11/13/cjzmeyv7y001ez5fy6fpqvwrh/</id>
+    <link href="http://vincentwang.top/2018/11/13/ck0ox6r6z001f0efyj8kat6ex/"/>
+    <id>http://vincentwang.top/2018/11/13/ck0ox6r6z001f0efyj8kat6ex/</id>
     <published>2018-11-13T08:04:37.000Z</published>
     <updated>2018-11-13T08:05:03.910Z</updated>
     
@@ -298,8 +321,8 @@
   
   <entry>
     <title>Cdh 安装spark2</title>
-    <link href="http://vincentwang.top/2018/11/13/cjzmeyv650000z5fyjtu0uasq/"/>
-    <id>http://vincentwang.top/2018/11/13/cjzmeyv650000z5fyjtu0uasq/</id>
+    <link href="http://vincentwang.top/2018/11/13/ck0ox6r5q00000efyigm3e5bw/"/>
+    <id>http://vincentwang.top/2018/11/13/ck0ox6r5q00000efyigm3e5bw/</id>
     <published>2018-11-13T08:03:23.000Z</published>
     <updated>2018-11-13T08:03:53.259Z</updated>
     
@@ -326,8 +349,8 @@
   
   <entry>
     <title>Oracle 使用catalog start with删除过期备份</title>
-    <link href="http://vincentwang.top/2018/11/13/cjzmeyv80001iz5fyxk53owxp/"/>
-    <id>http://vincentwang.top/2018/11/13/cjzmeyv80001iz5fyxk53owxp/</id>
+    <link href="http://vincentwang.top/2018/11/13/ck0ox6r6y001d0efyvnugrmv1/"/>
+    <id>http://vincentwang.top/2018/11/13/ck0ox6r6y001d0efyvnugrmv1/</id>
     <published>2018-11-13T08:01:39.000Z</published>
     <updated>2018-11-13T08:02:06.076Z</updated>
     
@@ -350,8 +373,8 @@
   
   <entry>
     <title>MongoDB 写安全(Write Concern)</title>
-    <link href="http://vincentwang.top/2018/11/13/cjzmeyv7k000oz5fy289gtkd8/"/>
-    <id>http://vincentwang.top/2018/11/13/cjzmeyv7k000oz5fy289gtkd8/</id>
+    <link href="http://vincentwang.top/2018/11/13/ck0ox6r6l000u0efypj688aem/"/>
+    <id>http://vincentwang.top/2018/11/13/ck0ox6r6l000u0efypj688aem/</id>
     <published>2018-11-13T07:59:50.000Z</published>
     <updated>2018-11-13T08:00:13.758Z</updated>
     
@@ -373,8 +396,8 @@
   
   <entry>
     <title>Oracle ASM diskgroup dismount with Waited 15 secs for write IO to PST</title>
-    <link href="http://vincentwang.top/2018/11/13/cjzmeyv7z001gz5fy24mwzmme/"/>
-    <id>http://vincentwang.top/2018/11/13/cjzmeyv7z001gz5fy24mwzmme/</id>
+    <link href="http://vincentwang.top/2018/11/13/ck0ox6r6u00160efyiq7234lo/"/>
+    <id>http://vincentwang.top/2018/11/13/ck0ox6r6u00160efyiq7234lo/</id>
     <published>2018-11-13T07:55:58.000Z</published>
     <updated>2018-11-13T07:58:55.752Z</updated>
     
@@ -397,8 +420,8 @@
   
   <entry>
     <title>Oracle 回滚灾难</title>
-    <link href="http://vincentwang.top/2018/11/13/cjzmeyv82001lz5fyvhuh1tnz/"/>
-    <id>http://vincentwang.top/2018/11/13/cjzmeyv82001lz5fyvhuh1tnz/</id>
+    <link href="http://vincentwang.top/2018/11/13/ck0ox6r70001h0efyjjuhdhhl/"/>
+    <id>http://vincentwang.top/2018/11/13/ck0ox6r70001h0efyjjuhdhhl/</id>
     <published>2018-11-13T07:54:51.000Z</published>
     <updated>2018-11-13T07:55:05.142Z</updated>
     
@@ -424,8 +447,8 @@
   
   <entry>
     <title>MySQL 物理备份 Percona XtraBackup 备份原理</title>
-    <link href="http://vincentwang.top/2018/11/13/cjzmeyv90002vz5fyw6ywigrc/"/>
-    <id>http://vincentwang.top/2018/11/13/cjzmeyv90002vz5fyw6ywigrc/</id>
+    <link href="http://vincentwang.top/2018/11/13/ck0ox6r6t00150efyyspyifkm/"/>
+    <id>http://vincentwang.top/2018/11/13/ck0ox6r6t00150efyyspyifkm/</id>
     <published>2018-11-13T07:53:05.000Z</published>
     <updated>2018-11-13T07:53:24.861Z</updated>
     
@@ -448,8 +471,8 @@
   
   <entry>
     <title>MySQL 权限管理</title>
-    <link href="http://vincentwang.top/2018/11/13/cjzmeyv92002xz5fy3obh1h3i/"/>
-    <id>http://vincentwang.top/2018/11/13/cjzmeyv92002xz5fy3obh1h3i/</id>
+    <link href="http://vincentwang.top/2018/11/13/ck0ox6r71001j0efysk2fs2wf/"/>
+    <id>http://vincentwang.top/2018/11/13/ck0ox6r71001j0efysk2fs2wf/</id>
     <published>2018-11-13T07:52:09.000Z</published>
     <updated>2018-11-13T07:52:30.267Z</updated>
     
@@ -467,33 +490,6 @@
     
     
       <category term="mysql" scheme="http://vincentwang.top/tags/mysql/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>Linux iptables设置只允许特定mac地址、端口访问</title>
-    <link href="http://vincentwang.top/2018/11/13/cjzmeyv7g000kz5fyp5t3ao9f/"/>
-    <id>http://vincentwang.top/2018/11/13/cjzmeyv7g000kz5fyp5t3ao9f/</id>
-    <published>2018-11-13T07:50:44.000Z</published>
-    <updated>2018-11-13T08:11:37.398Z</updated>
-    
-    <content type="html"><![CDATA[<p>iptables设置特定mac、端口访问</p><ul><li>开放端口22、1521</li></ul><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"># 增加允许访问</span><br><span class="line">iptables -I INPUT -p tcp --dport 22 -m mac --mac-source 34-E6-D7-48-03-8D -j ACCEPT</span><br><span class="line">iptables -I INPUT -p tcp --dport 22 -m mac --mac-source 34-E6-D7-48-03-8D -j ACCEPT</span><br><span class="line">iptables -I INPUT -p tcp --dport 1521 -m mac --mac-source 20-47-47-D0-50-2A -j ACCEPT</span><br><span class="line">iptables -I INPUT -p tcp --dport 1521 -m mac --mac-source 34-E6-D7-48-03-8D -j ACCEPT</span><br><span class="line"></span><br><span class="line"># 增加回环地址</span><br><span class="line">iptables -A INPUT -i lo -j ACCEPT</span><br><span class="line">iptables -A OUTPUT -o lo -j ACCEPT</span><br><span class="line"></span><br><span class="line"># 增加基于状态的</span><br><span class="line">iptables -A INPUT -m state --state ESTABLISHED -j ACCEPT</span><br><span class="line"></span><br><span class="line"># 修改默认规则drop</span><br><span class="line">iptables -P INPUT DROP</span><br></pre></td></tr></table></figure><ul><li>清空防火墙策略</li></ul><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"># 要先把默认策略修改，不然清空后自己进不去了</span><br><span class="line">iptables -P INPUT ACCEPT</span><br><span class="line">iptables -P FORWARD ACCEPT</span><br><span class="line">iptables -P OUTPUT ACCEPT</span><br><span class="line"></span><br><span class="line"># 清空策略</span><br><span class="line">iptables -F</span><br></pre></td></tr></table></figure><ul><li>保存防火墙策略</li></ul><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">service iptabels save</span><br></pre></td></tr></table></figure><ul><li>查看策略</li></ul><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -L -n</span><br></pre></td></tr></table></figure>]]></content>
-    
-    <summary type="html">
-    
-      
-      
-        &lt;p&gt;iptables设置特定mac、端口访问&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;开放端口22、1521&lt;/li&gt;
-&lt;/ul&gt;
-&lt;figure class=&quot;highlight plain&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;
-      
-    
-    </summary>
-    
-    
-      <category term="linux" scheme="http://vincentwang.top/tags/linux/"/>
     
   </entry>
   
