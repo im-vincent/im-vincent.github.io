@@ -152,6 +152,88 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-MongoDB记录慢日志" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/11/13/ck0qgk6w9000w9dfypcerjxb8/">MongoDB记录慢日志</a>
+    </h1>
+  
+
+        
+        <a href="/2018/11/13/ck0qgk6w9000w9dfypcerjxb8/" class="archive-article-date">
+  	<time datetime="2018-11-13T06:26:46.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="Profiling-Levels"><a href="#Profiling-Levels" class="headerlink" title="Profiling Levels"></a>Profiling Levels</h3><p>The following profiling levels are available:</p>
+<ul>
+<li>0 - the profiler is off, does not collect any data. mongod always writes operations longer than the slowOpThresholdMs threshold to its log.</li>
+<li>1 - collects profiling data for slow operations only. By default slow operations are those slower than 100 milliseconds.<br>You can modify the threshold for “slow” operations with the slowOpThresholdMs runtime option or the setParameter command. See the Specify the Threshold for Slow Operations section for more information.</li>
+<li>2 - collects profiling data for all database operations.</li>
+</ul>
+<h3 id="Enable-Database-Profiling-and-Set-the-Profiling-Level"><a href="#Enable-Database-Profiling-and-Set-the-Profiling-Level" class="headerlink" title="Enable Database Profiling and Set the Profiling Level"></a>Enable Database Profiling and Set the Profiling Level</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">db.setProfilingLevel(2) #全部开启</span><br><span class="line"></span><br><span class="line">db.setProfilingLevel(1,20) #超过20ms的记录</span><br></pre></td></tr></table></figure>
+<h3 id="Check-Profiling-Level"><a href="#Check-Profiling-Level" class="headerlink" title="Check Profiling Level"></a>Check Profiling Level</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">db.getProfilingStatus()</span><br><span class="line">db.getProfilingLevel()</span><br></pre></td></tr></table></figure>
+<h3 id="Example-Profiler-Data-Queries"><a href="#Example-Profiler-Data-Queries" class="headerlink" title="Example Profiler Data Queries"></a>Example Profiler Data Queries</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">db.system.profile.find().limit(10).sort( &#123; ts : -1 &#125; ).pretty()</span><br><span class="line">db.system.profile.find( &#123; op: &#123; $ne : &apos;command&apos; &#125; &#125; ).pretty()</span><br><span class="line">db.system.profile.find( &#123; ns : &apos;mydb.test&apos; &#125; ).pretty()</span><br><span class="line">db.system.profile.find( &#123; millis : &#123; $gt : 5 &#125; &#125; ).pretty()</span><br><span class="line"></span><br><span class="line">查看执行时间大于100毫秒的执行操作，并倒序排列,并取前5行</span><br><span class="line">db.system.profile.find(&#123;millis:&#123;$gt:100&#125;&#125;).sort(&#123;$natural:-1&#125;).limit(5);</span><br></pre></td></tr></table></figure>
+<h3 id="Change-Size-of-system-profile-Collection-on-the-Primary"><a href="#Change-Size-of-system-profile-Collection-on-the-Primary" class="headerlink" title="Change Size of system.profile Collection on the Primary"></a>Change Size of system.profile Collection on the Primary</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">db.setProfilingLevel(0)</span><br><span class="line"></span><br><span class="line">db.system.profile.drop()</span><br><span class="line"></span><br><span class="line">db.createCollection( &quot;system.profile&quot;, &#123; capped: true, size:4000000 &#125; )</span><br><span class="line"></span><br><span class="line">db.setProfilingLevel(1)</span><br></pre></td></tr></table></figure>
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">mongodb</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2018/11/13/ck0qgk6w9000w9dfypcerjxb8/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-博客误删除了" class="article article-type-post  article-index" itemscope="" itemprop="blogPost">
   <div class="article-inner">
     
@@ -159,12 +241,12 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/13/ck0ox6r8e002z0efyrp810g89/">博客误删除了</a>
+      <a class="article-title" href="/2018/11/13/ck0qgk6x500299dfynydoy27m/">博客误删除了</a>
     </h1>
   
 
         
-        <a href="/2018/11/13/ck0ox6r8e002z0efyrp810g89/" class="archive-article-date">
+        <a href="/2018/11/13/ck0qgk6x500299dfynydoy27m/" class="archive-article-date">
   	<time datetime="2018-11-13T06:09:43.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-13</time>
 </a>
         
@@ -188,7 +270,7 @@
 
       
         <p class="article-more-link">
-          <a class="article-more-a" href="/2018/11/13/ck0ox6r8e002z0efyrp810g89/">展开全文 >></a>
+          <a class="article-more-a" href="/2018/11/13/ck0qgk6x500299dfynydoy27m/">展开全文 >></a>
         </p>
       
 
@@ -315,6 +397,10 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">ceph</a>
+              </li>
+             
+              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">hadoop</a>
               </li>
              
@@ -327,11 +413,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">ceph</a>
+                <a href="javascript:void(0)" class="js-tag color5">hive</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color2">docker</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color4">big data</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -340,10 +430,6 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color1">kubernetes</a>
-              </li>
-             
-              <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color4">big data</a>
               </li>
              
               <li class="article-tag-list-item">
@@ -363,19 +449,15 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">brew</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color3">alluxio</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color2">python</a>
+                <a href="javascript:void(0)" class="js-tag color5">brew</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">hive</a>
+                <a href="javascript:void(0)" class="js-tag color2">python</a>
               </li>
             
             <div class="clearfix"></div>
