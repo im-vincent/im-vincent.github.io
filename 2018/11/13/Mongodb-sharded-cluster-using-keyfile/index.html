@@ -1,0 +1,516 @@
+
+
+<!DOCTYPE html>
+<html lang="en" data-default-color-scheme=&#34;auto&#34;>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/favicon.png">
+  <link rel="icon" href="/img/favicon.png">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="description" content="">
+  <meta name="author" content="John Doe">
+  <meta name="keywords" content="">
+  
+  <title>Mongodb sharded cluster using keyfile - Hexo</title>
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" />
+
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@4.0.0/github-markdown.min.css" />
+  <link  rel="stylesheet" href="/lib/hint/hint.min.css" />
+
+  
+    
+    
+      
+      <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@10.7.2/styles/github-gist.min.css" />
+    
+  
+
+  
+    <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" />
+  
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_ba1fz6golrf.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_kmeydafke9r.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+<!-- 自定义样式保持在最底部 -->
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.8.11","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"right","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"copy_btn":true,"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null}},"search_path":"/local-search.xml"};
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+
+<body>
+  <header style="height: 70vh;">
+    <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand"
+       href="/">&nbsp;<strong>Fluid</strong>&nbsp;</a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                Home
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                Archives
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                Categories
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                Tags
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                About
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" data-toggle="modal" data-target="#modalSearch">&nbsp;<i
+                class="iconfont icon-search"></i>&nbsp;</a>
+          </li>
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+    <div class="banner" id="banner" parallax=true
+         style="background: url('/img/default.png') no-repeat center center;
+           background-size: cover;">
+      <div class="full-bg-img">
+        <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+          <div class="page-header text-center fade-in-up">
+            <span class="h2" id="subtitle" title="Mongodb sharded cluster using keyfile">
+              
+            </span>
+
+            
+              <div class="mt-3">
+  
+  
+    <span class="post-meta">
+      <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+      <time datetime="2018-11-13 14:53" pubdate>
+        November 13, 2018 pm
+      </time>
+    </span>
+  
+</div>
+
+<div class="mt-1">
+  
+    
+    <span class="post-meta mr-2">
+      <i class="iconfont icon-chart"></i>
+      1.9k 字
+    </span>
+  
+
+  
+    
+    <span class="post-meta mr-2">
+      <i class="iconfont icon-clock-fill"></i>
+      
+      
+      28
+       分钟
+    </span>
+  
+
+  
+  
+</div>
+
+            
+          </div>
+
+          
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="d-none d-lg-block col-lg-2"></div>
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div class="py-5" id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Mongodb sharded cluster using keyfile</h1>
+            
+            <div class="markdown-body">
+              <h2 id="官方文档"><a href="#官方文档" class="headerlink" title="官方文档"></a>官方文档</h2><p><a target="_blank" rel="noopener" href="https://docs.mongodb.com/v3.2/tutorial/enforce-keyfile-access-control-in-existing-sharded-cluster/">Enforce Keyfile Access Control in Sharded Cluster</a></p>
+<h2 id="坑"><a href="#坑" class="headerlink" title="坑"></a>坑</h2><ol>
+<li>按照官方文档无法成功。</li>
+<li><code>enableLocalhostAuthBypass</code>这个参数已经不可用了，官方文档有写。</li>
+<li>一定要建立用户（本地、集群），开启keyfile默认开启鉴权，如果没有用户各种错误，而且链接不上。</li>
+</ol>
+<h2 id="部署操作"><a href="#部署操作" class="headerlink" title="部署操作"></a>部署操作</h2><h3 id="建立keyfile"><a href="#建立keyfile" class="headerlink" title="建立keyfile"></a>建立<code>keyfile</code></h3><figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs pgsql">openssl rand -base64 <span class="hljs-number">756</span> &gt; &lt;<span class="hljs-type">path</span>-<span class="hljs-keyword">to</span>-keyfile&gt;<br>chmod <span class="hljs-number">400</span> &lt;<span class="hljs-type">path</span>-<span class="hljs-keyword">to</span>-keyfile&gt;<br></code></pre></td></tr></table></figure>
+
+<h3 id="复制keyfile到集群"><a href="#复制keyfile到集群" class="headerlink" title="复制keyfile到集群"></a>复制keyfile到集群</h3><p>mongod、mongos、config</p>
+<figure class="highlight cos"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs cos">IMPORTANT<br><span class="hljs-keyword">Do</span> not <span class="hljs-keyword">use</span> shared network locations or storage mediums such <span class="hljs-keyword">as</span> USB drives <span class="hljs-keyword">for</span> storing the keyfile.<br></code></pre></td></tr></table></figure>
+
+<h3 id="关闭Balancer"><a href="#关闭Balancer" class="headerlink" title="关闭Balancer"></a>关闭Balancer</h3><p>Connect a <a target="_blank" rel="noopener" href="https://docs.mongodb.com/v3.2/reference/program/mongo/#bin.mongo">mongo</a> shell to a <a target="_blank" rel="noopener" href="https://docs.mongodb.com/v3.2/reference/program/mongos/#bin.mongos">mongos</a>.</p>
+<figure class="highlight mipsasm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs mipsasm"><span class="hljs-keyword">sh.stopBalancer()</span><br><span class="hljs-keyword"></span><span class="hljs-comment">#关闭</span><br><br><span class="hljs-keyword">sh.getBalancerState()</span><br><span class="hljs-keyword"></span><span class="hljs-comment">#检查是否关闭</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="建立副本集用户"><a href="#建立副本集用户" class="headerlink" title="建立副本集用户"></a>建立副本集用户</h3><p>Create the user administrator（只能管理用户，不能管理数据、集群）</p>
+<p>ie 这个链接的是副本集，千万别搞错。</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs json">admin = db.getSiblingDB(<span class="hljs-string">&quot;admin&quot;</span>)<br>admin.createUser(<br>  &#123;<br>    user: <span class="hljs-string">&quot;rsuseradmin&quot;</span>, <span class="hljs-comment">//这个用户只能管理user，不能管理集群</span><br>    pwd: <span class="hljs-string">&quot;changeme1&quot;</span>,<br>    roles: [ &#123; role: <span class="hljs-string">&quot;userAdminAnyDatabase&quot;</span>, db: <span class="hljs-string">&quot;admin&quot;</span> &#125; ]<br>  &#125;<br>)<br></code></pre></td></tr></table></figure>
+
+<p>Create Administrative User for Cluster Management（管理rs副本集）</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs json">db.getSiblingDB(<span class="hljs-string">&quot;admin&quot;</span>).createUser(<br>  &#123;<br>    <span class="hljs-attr">&quot;user&quot;</span> : <span class="hljs-string">&quot;rsclusteradmin&quot;</span>, <span class="hljs-comment">//只能管理集群</span><br>    <span class="hljs-attr">&quot;pwd&quot;</span> : <span class="hljs-string">&quot;changeme2&quot;</span>,<br>    roles: [ &#123; <span class="hljs-attr">&quot;role&quot;</span> : <span class="hljs-string">&quot;clusterAdmin&quot;</span>, <span class="hljs-attr">&quot;db&quot;</span> : <span class="hljs-string">&quot;admin&quot;</span> &#125; ]<br>  &#125;<br>)<br></code></pre></td></tr></table></figure>
+
+<p>如果需要访问本地数据，可以使用rsuseradmin建立一个新的用户来访问数据库</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs json">db.createUser(&#123;user:<span class="hljs-string">&quot;test&quot;</span>,pwd:<span class="hljs-string">&quot;test&quot;</span>,roles:[  <br>    &#123;role:<span class="hljs-string">&quot;dbOwner&quot;</span>,db:<span class="hljs-string">&quot;wangxi&quot;</span>&#125;]&#125;);  <br>#建立用户test，角色dbOwner<br></code></pre></td></tr></table></figure>
+
+<h3 id="建立分片集群用户（shard）"><a href="#建立分片集群用户（shard）" class="headerlink" title="建立分片集群用户（shard）"></a>建立分片集群用户（shard）</h3><p>Create the user administrator</p>
+<p>管理用户的管理员，真绕。</p>
+<p>这个是要链接到<code>mongos</code></p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs json">admin = db.getSiblingDB(<span class="hljs-string">&quot;admin&quot;</span>)<br>admin.createUser(<br>  &#123;<br>    user: <span class="hljs-string">&quot;shuseradmin&quot;</span>, <span class="hljs-comment">//这个用户只能管理user，不能管理集群</span><br>    pwd: <span class="hljs-string">&quot;changeme1&quot;</span>,<br>    roles: [ &#123; role: <span class="hljs-string">&quot;userAdminAnyDatabase&quot;</span>, db: <span class="hljs-string">&quot;admin&quot;</span> &#125; ]<br>  &#125;<br>)<br></code></pre></td></tr></table></figure>
+
+<p>Create Administrative User for Cluster Management</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs json">db.getSiblingDB(<span class="hljs-string">&quot;admin&quot;</span>).createUser(<br>  &#123;<br>    <span class="hljs-attr">&quot;user&quot;</span> : <span class="hljs-string">&quot;shclusteradmin&quot;</span>, <span class="hljs-comment">//只能管理集群</span><br>    <span class="hljs-attr">&quot;pwd&quot;</span> : <span class="hljs-string">&quot;changeme2&quot;</span>,<br>    roles: [ &#123; <span class="hljs-attr">&quot;role&quot;</span> : <span class="hljs-string">&quot;clusterAdmin&quot;</span>, <span class="hljs-attr">&quot;db&quot;</span> : <span class="hljs-string">&quot;admin&quot;</span> &#125; ]<br>  &#125;<br>)<br><br>#sh.status()<br></code></pre></td></tr></table></figure>
+
+<h3 id="为什么要单独设置用户？"><a href="#为什么要单独设置用户？" class="headerlink" title="为什么要单独设置用户？"></a>为什么要单独设置用户？</h3><ol>
+<li>rs可能会单独增加成员</li>
+<li>rs可能需要直接链接到mongod</li>
+<li>sh可能会增加分片</li>
+</ol>
+<h3 id="修改配置文件增加keyfile"><a href="#修改配置文件增加keyfile" class="headerlink" title="修改配置文件增加keyfile"></a>修改配置文件增加keyfile</h3><p>mongos、mongod、config 关闭实例，增加keyfile</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs awk">security:<br>  keyFile: <span class="hljs-regexp">/home/m</span>ongodb<span class="hljs-regexp">/mongodata/</span>cfg/keyfile<br></code></pre></td></tr></table></figure>
+
+<p>增加后，重启所有实例</p>
+<h3 id="开启balancer"><a href="#开启balancer" class="headerlink" title="开启balancer"></a>开启balancer</h3><figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-attribute">mongo</span> -u shclusteradmin -p changeme<span class="hljs-number">2</span> admin --port <span class="hljs-number">27000</span><br><span class="hljs-attribute">sh</span>.startBalancer()<br></code></pre></td></tr></table></figure>
+
+<h3 id="测试权限"><a href="#测试权限" class="headerlink" title="测试权限"></a>测试权限</h3><p>副本集</p>
+<figure class="highlight vim"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br></pre></td><td class="code"><pre><code class="hljs vim">[mongodb@se122 logs]$ mongo -<span class="hljs-keyword">u</span> rsuseradmin -<span class="hljs-keyword">p</span> changeme1 admin --port <span class="hljs-number">27011</span><br>MongoDB <span class="hljs-keyword">shell</span> <span class="hljs-keyword">version</span>: <span class="hljs-number">3.2</span>.<span class="hljs-number">10</span><br>connecting <span class="hljs-keyword">to</span>: <span class="hljs-number">127.0</span>.<span class="hljs-number">0.1</span>:<span class="hljs-number">27011</span>/admin<br>rs1:PRIMARY&gt; db.<span class="hljs-built_in">system</span>.users.<span class="hljs-keyword">find</span>().pretty()<br>&#123;<br>	<span class="hljs-string">&quot;_id&quot;</span> : <span class="hljs-string">&quot;admin.fred&quot;</span>,<br>	<span class="hljs-string">&quot;user&quot;</span> : <span class="hljs-string">&quot;fred&quot;</span>,<br>	<span class="hljs-string">&quot;db&quot;</span> : <span class="hljs-string">&quot;admin&quot;</span>,<br>	<span class="hljs-string">&quot;credentials&quot;</span> : &#123;<br>		<span class="hljs-string">&quot;SCRAM-SHA-1&quot;</span> : &#123;<br>			<span class="hljs-string">&quot;iterationCount&quot;</span> : <span class="hljs-number">10000</span>,<br>			<span class="hljs-string">&quot;salt&quot;</span> : <span class="hljs-string">&quot;IWDku4hxN12fEwxEPpP8aw==&quot;</span>,<br>			<span class="hljs-string">&quot;storedKey&quot;</span> : <span class="hljs-string">&quot;6jkANel76XXtCvTz3fiIvC9vNMc=&quot;</span>,<br>			<span class="hljs-string">&quot;serverKey&quot;</span> : <span class="hljs-string">&quot;IsKKSA9+zRScpLZLkg3zeMyI5IU=&quot;</span><br>		&#125;<br>	&#125;,<br>	<span class="hljs-string">&quot;roles&quot;</span> : [<br>		&#123;<br>			<span class="hljs-string">&quot;role&quot;</span> : <span class="hljs-string">&quot;userAdminAnyDatabase&quot;</span>,<br>			<span class="hljs-string">&quot;db&quot;</span> : <span class="hljs-string">&quot;admin&quot;</span><br>		&#125;<br>	]<br>&#125;<br><br>[mongodb@se122 logs]$ mongo -<span class="hljs-keyword">u</span> rsclusteradmin -<span class="hljs-keyword">p</span> changeme2 admin --port <span class="hljs-number">27011</span><br>MongoDB <span class="hljs-keyword">shell</span> <span class="hljs-keyword">version</span>: <span class="hljs-number">3.2</span>.<span class="hljs-number">10</span><br>connecting <span class="hljs-keyword">to</span>: <span class="hljs-number">127.0</span>.<span class="hljs-number">0.1</span>:<span class="hljs-number">27011</span>/admin<br>Server <span class="hljs-built_in">has</span> startup warning<span class="hljs-variable">s:</span><br><span class="hljs-number">2016</span>-<span class="hljs-number">12</span>-<span class="hljs-number">13</span>T14:<span class="hljs-number">27</span>:<span class="hljs-number">52.966</span>+<span class="hljs-number">0800</span> I CONTROL  [initandlisten]<br><span class="hljs-number">2016</span>-<span class="hljs-number">12</span>-<span class="hljs-number">13</span>T14:<span class="hljs-number">27</span>:<span class="hljs-number">52.966</span>+<span class="hljs-number">0800</span> I CONTROL  [initandlisten] ** WARNING: /sys/kernel/mm/transparent_hugepage/enabled <span class="hljs-keyword">is</span> <span class="hljs-string">&#x27;always&#x27;</span>.<br><span class="hljs-number">2016</span>-<span class="hljs-number">12</span>-<span class="hljs-number">13</span>T14:<span class="hljs-number">27</span>:<span class="hljs-number">52.966</span>+<span class="hljs-number">0800</span> I CONTROL  [initandlisten] **        We suggest setting it <span class="hljs-keyword">to</span> <span class="hljs-string">&#x27;never&#x27;</span><br><span class="hljs-number">2016</span>-<span class="hljs-number">12</span>-<span class="hljs-number">13</span>T14:<span class="hljs-number">27</span>:<span class="hljs-number">52.966</span>+<span class="hljs-number">0800</span> I CONTROL  [initandlisten]<br><span class="hljs-number">2016</span>-<span class="hljs-number">12</span>-<span class="hljs-number">13</span>T14:<span class="hljs-number">27</span>:<span class="hljs-number">52.966</span>+<span class="hljs-number">0800</span> I CONTROL  [initandlisten] ** WARNING: /sys/kernel/mm/transparent_hugepage/defrag <span class="hljs-keyword">is</span> <span class="hljs-string">&#x27;always&#x27;</span>.<br><span class="hljs-number">2016</span>-<span class="hljs-number">12</span>-<span class="hljs-number">13</span>T14:<span class="hljs-number">27</span>:<span class="hljs-number">52.966</span>+<span class="hljs-number">0800</span> I CONTROL  [initandlisten] **        We suggest setting it <span class="hljs-keyword">to</span> <span class="hljs-string">&#x27;never&#x27;</span><br><span class="hljs-number">2016</span>-<span class="hljs-number">12</span>-<span class="hljs-number">13</span>T14:<span class="hljs-number">27</span>:<span class="hljs-number">52.966</span>+<span class="hljs-number">0800</span> I CONTROL  [initandlisten]<br>rs1:PRIMARY&gt; rs.status()<br>&#123;<br>	<span class="hljs-string">&quot;set&quot;</span> : <span class="hljs-string">&quot;rs1&quot;</span>,<br>	<span class="hljs-string">&quot;date&quot;</span> : ISODate(<span class="hljs-string">&quot;2016-12-13T08:28:07.902Z&quot;</span>),<br>	<span class="hljs-string">&quot;myState&quot;</span> : <span class="hljs-number">1</span>,<br>	<span class="hljs-string">&quot;term&quot;</span> : NumberLong(<span class="hljs-number">19</span>),<br>	<span class="hljs-string">&quot;heartbeatIntervalMillis&quot;</span> : NumberLong(<span class="hljs-number">2000</span>),<br>	<span class="hljs-string">&quot;members&quot;</span> : [<br>		&#123;<br>			<span class="hljs-string">&quot;_id&quot;</span> : <span class="hljs-number">0</span>,<br>			<span class="hljs-string">&quot;name&quot;</span> : <span class="hljs-string">&quot;se122:27011&quot;</span>,<br>			<span class="hljs-string">&quot;health&quot;</span> : <span class="hljs-number">1</span>,<br>			<span class="hljs-string">&quot;state&quot;</span> : <span class="hljs-number">1</span>,<br>			<span class="hljs-string">&quot;stateStr&quot;</span> : <span class="hljs-string">&quot;PRIMARY&quot;</span>,<br>			<span class="hljs-string">&quot;uptime&quot;</span> : <span class="hljs-number">7215</span>,<br>			<span class="hljs-string">&quot;optime&quot;</span> : &#123;<br>				<span class="hljs-string">&quot;ts&quot;</span> : Timestamp(<span class="hljs-number">1481617664</span>, <span class="hljs-number">1</span>),<br>				<span class="hljs-string">&quot;t&quot;</span> : NumberLong(<span class="hljs-number">19</span>)<br>			&#125;,<br>			<span class="hljs-string">&quot;optimeDate&quot;</span> : ISODate(<span class="hljs-string">&quot;2016-12-13T08:27:44Z&quot;</span>),<br>			<span class="hljs-string">&quot;electionTime&quot;</span> : Timestamp(<span class="hljs-number">1481610472</span>, <span class="hljs-number">1</span>),<br>			<span class="hljs-string">&quot;electionDate&quot;</span> : ISODate(<span class="hljs-string">&quot;2016-12-13T06:27:52Z&quot;</span>),<br>			<span class="hljs-string">&quot;configVersion&quot;</span> : <span class="hljs-number">1</span>,<br>			<span class="hljs-string">&quot;self&quot;</span> : true<br>		&#125;<br>	],<br>	<span class="hljs-string">&quot;ok&quot;</span> : <span class="hljs-number">1</span><br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>分片</p>
+<figure class="highlight vim"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><code class="hljs vim">[mongodb@se122 logs]$ mongo -<span class="hljs-keyword">u</span> shuseradmin -<span class="hljs-keyword">p</span> changeme1 admin --port <span class="hljs-number">27000</span><br>mongos&gt; db.<span class="hljs-built_in">system</span>.users.<span class="hljs-keyword">find</span>().pretty()<br>&#123;<br>	<span class="hljs-string">&quot;_id&quot;</span> : <span class="hljs-string">&quot;admin.ravi&quot;</span>,<br>	<span class="hljs-string">&quot;user&quot;</span> : <span class="hljs-string">&quot;ravi&quot;</span>,<br>	<span class="hljs-string">&quot;db&quot;</span> : <span class="hljs-string">&quot;admin&quot;</span>,<br>	<span class="hljs-string">&quot;credentials&quot;</span> : &#123;<br>		<span class="hljs-string">&quot;SCRAM-SHA-1&quot;</span> : &#123;<br>			<span class="hljs-string">&quot;iterationCount&quot;</span> : <span class="hljs-number">10000</span>,<br>			<span class="hljs-string">&quot;salt&quot;</span> : <span class="hljs-string">&quot;hXA/YhP0rs4IIk/tkMA/mA==&quot;</span>,<br>			<span class="hljs-string">&quot;storedKey&quot;</span> : <span class="hljs-string">&quot;XYehp2s7c2KBf9xHeGxE2dxdpKY=&quot;</span>,<br>			<span class="hljs-string">&quot;serverKey&quot;</span> : <span class="hljs-string">&quot;Iq7zWR9iexZU8Of2WjE8X+Z4/14=&quot;</span><br>		&#125;<br>	&#125;,<br>	<span class="hljs-string">&quot;roles&quot;</span> : [<br>		&#123;<br>			<span class="hljs-string">&quot;role&quot;</span> : <span class="hljs-string">&quot;clusterAdmin&quot;</span>,<br>			<span class="hljs-string">&quot;db&quot;</span> : <span class="hljs-string">&quot;admin&quot;</span><br>		&#125;<br>	]<br>&#125;<br><br>[mongodb@se122 logs]$ mongo -<span class="hljs-keyword">u</span> shclusteradmin -<span class="hljs-keyword">p</span> changeme2 admin --port <span class="hljs-number">27000</span><br>MongoDB <span class="hljs-keyword">shell</span> <span class="hljs-keyword">version</span>: <span class="hljs-number">3.2</span>.<span class="hljs-number">10</span><br>connecting <span class="hljs-keyword">to</span>: <span class="hljs-number">127.0</span>.<span class="hljs-number">0.1</span>:<span class="hljs-number">27000</span>/admin<br>mongos&gt; <span class="hljs-keyword">sh</span>.status()<br>--- Sharding Status ---<br>  sharding <span class="hljs-keyword">version</span>: &#123;<br>	<span class="hljs-string">&quot;_id&quot;</span> : <span class="hljs-number">1</span>,<br>	<span class="hljs-string">&quot;minCompatibleVersion&quot;</span> : <span class="hljs-number">5</span>,<br>	<span class="hljs-string">&quot;currentVersion&quot;</span> : <span class="hljs-number">6</span>,<br>	<span class="hljs-string">&quot;clusterId&quot;</span> : ObjectId(<span class="hljs-string">&quot;582574de7ecb76cb2edff64e&quot;</span>)<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>认证库</p>
+<p>在分片环境中我们使用mongos链接mongod实例获取数据，这个时候会用到认证库来认证数据</p>
+<figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><code class="hljs stylus">mongos&gt; db<span class="hljs-selector-class">.getSiblingDB</span>(<span class="hljs-string">&quot;admin&quot;</span>)<span class="hljs-selector-class">.dropUser</span>(<span class="hljs-string">&quot;test1&quot;</span>)<br>true<br>#清空之前的实验用户<br><br>db<span class="hljs-selector-class">.getSiblingDB</span>(<span class="hljs-string">&quot;admin&quot;</span>)<span class="hljs-selector-class">.createUser</span>(<br>  &#123;<br>    <span class="hljs-string">&quot;user&quot;</span> : <span class="hljs-string">&quot;test1&quot;</span>,<br>    <span class="hljs-string">&quot;pwd&quot;</span> : <span class="hljs-string">&quot;test1&quot;</span>,<br>    roles: <span class="hljs-selector-attr">[ &#123; <span class="hljs-string">&quot;role&quot;</span> : <span class="hljs-string">&quot;dbOwner&quot;</span>, <span class="hljs-string">&quot;db&quot;</span> : <span class="hljs-string">&quot;wangxi&quot;</span> &#125; ]</span><br>  &#125;<br>)<br>#在mongos建立用户，这个数据最终会放到config里<br><br><span class="hljs-selector-attr">[mongodb@se122 logs]</span>$ mongo -u test1 -<span class="hljs-selector-tag">p</span> test1 wangxi --port <span class="hljs-number">27000</span> --authenticationDatabase=admin<br>MongoDB shell version: <span class="hljs-number">3.2</span>.<span class="hljs-number">10</span><br>connecting to: <span class="hljs-number">127.0</span>.<span class="hljs-number">0.1</span>:<span class="hljs-number">27000</span>/wangxi<br>mongos&gt; db<span class="hljs-selector-class">.test</span><span class="hljs-selector-class">.findOne</span>()<br>&#123;<br>	<span class="hljs-string">&quot;_id&quot;</span> : ObjectId(<span class="hljs-string">&quot;583ce0973e14696294e0bbcf&quot;</span>),<br>	<span class="hljs-string">&quot;uid&quot;</span> : <span class="hljs-number">3</span>,<br>	<span class="hljs-string">&quot;name&quot;</span> : <span class="hljs-string">&quot;Ale&quot;</span>,<br>	<span class="hljs-string">&quot;phone&quot;</span> : <span class="hljs-string">&quot;+55 53 1234 4321&quot;</span>,<br>	<span class="hljs-string">&quot;timestamp&quot;</span> : ISODate(<span class="hljs-string">&quot;2016-11-29T01:57:57.429Z&quot;</span>)<br>&#125;<br>#通过mongos获取用户数据<br></code></pre></td></tr></table></figure>
+
+<h3 id="权限说明"><a href="#权限说明" class="headerlink" title="权限说明"></a>权限说明</h3><ul>
+<li>数据库用户角色（user）</li>
+</ul>
+<p>read和readWrite，表示用户具有指定数据库的读或者写角色。这两角色比较基本，能对数据库进行基本的读写操作，对于普通的application而言，可以限定用户为此角色</p>
+<ul>
+<li><p>数据库管理员角色（admin）</p>
+<ol>
+<li>userAdmin：“用户管理员”，可以对指定的数据库，创建用户、修改用户的roles；这种角色，只能管理用户，不能访问数据库的数据。</li>
+<li>dbAdmin：“数据库管理员”，可以对指定的数据库，进行创建索引、schema调整、统计信息搜集等，比如“dbStats”、“collStats”、“createCollection”、“createIndex”等；但是它不能创建用户和role</li>
+<li>dbOwner：“数据库持有者”，继承“readWrite”、“dbAdmin”、“userAdmin”三种角色。通常我们必须为每个数据库创建至少一个“userAdmin”或者“dbOwner”权限的管理员用户，以便管理普通的“user”用户。</li>
+</ol>
+</li>
+<li><p>集群管理员角色（cluster admin)</p>
+<p>用于管理集群（replica set和sharding cluster）系统和数据库。如果你的架构是集群模式，数据库至少有一个cluster管理员角色的用户。</p>
+<ol>
+<li>clusterManager：“集群管理员”，可以访问config、local数据库，这对sharding、replica set都很重要，比如sharding的维护方法“enableSharding”、“addShard”、“dbStats”，以及“replica set”中的维护方法“replSetConfigure”、“replSetGetStatus”等等。我们可以使用此角色的用户调整集群节点的部署和查看一些数据库状态。</li>
+<li>hostManager：“host管理员”</li>
+<li>clusterAdmin：“集群管理员”，继承了“clusterManager”、“hostManager”、“clusterMonitor”等角色，是集群管理的最高角色；通常我们只需要给一个sharding database指定一个此角色的用户即可。</li>
+</ol>
+</li>
+<li><p>所有数据库角色（All-Databases)</p>
+<p>即此角色不限定在某个数据库上，它限定在所有的数据库上；如果一个用户需要具有所有数据库的权限，传统的方式就是在每个数据库下创建一个user，繁琐而且易于疏漏，All-Databases提供了一种便捷的手段，创建这样角色的用户时不需要指定数据库。</p>
+<ol>
+<li>readAnyDatabase、readWriteAnyDatabase：对所有数据库具有读、读写角色。</li>
+<li>userAdminAnyDatabase：是所有数据库的用户管理员。</li>
+<li>dbAdminAnyDatabase：是所有数据库的管理员。</li>
+</ol>
+</li>
+<li><p>超级用户权限</p>
+<p>root角色是一个超级角色，此角色的用户具有所有的操作权限，是“readWriteAnyDatabase”、“dbAdminAnyDatabase”、“userAdminAnyDatabase”、“clusterAdmin”角色的组合。对于开发人员而言，为了维护的便捷性，可以给mongodb（或者集群）创建一个root用户。</p>
+</li>
+</ul>
+
+            </div>
+            <hr>
+            <div>
+              <div class="post-metas mb-3">
+                
+                
+                  <div class="post-meta">
+                    <i class="iconfont icon-tags"></i>
+                    
+                      <a class="hover-with-bg" href="/tags/mongodb/">mongodb</a>
+                    
+                  </div>
+                
+              </div>
+              
+                <p class="note note-warning">
+                  
+                    本博客所有文章除特别声明外，均采用 <a target="_blank" href="https://creativecommons.org/licenses/by-sa/4.0/deed.zh" rel="nofollow noopener noopener">CC BY-SA 4.0 协议</a> ，转载请注明出处！
+                  
+                </p>
+              
+              
+                <div class="post-prevnext">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2018/11/13/Mongodb%E6%9D%83%E9%99%90%E6%A6%82%E5%BF%B5/">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Mongodb权限概念</span>
+                        <span class="visible-mobile">Previous</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2018/11/13/Oracle%E5%B9%B6%E5%8F%91%E6%9F%A5%E8%AF%A2%E5%8D%A0%E7%94%A8%E5%A4%A7%E9%87%8Fprocess%E6%95%B0%E6%8D%AE%E5%BA%93%E6%97%A0%E6%B3%95%E7%99%BB%E9%99%86/">
+                        <span class="hidden-mobile">Oracle并发查询占用大量process数据库无法登陆</span>
+                        <span class="visible-mobile">Next</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+    
+      <div class="d-none d-lg-block col-lg-2 toc-container" id="toc-ctn">
+        <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;TOC</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+      </div>
+    
+  </div>
+</div>
+
+<!-- Custom -->
+
+
+    
+
+    
+      <a id="scroll-top-button" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">Search</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v"
+                 for="local-search-input">keyword</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    
+  </main>
+
+  <footer class="text-center mt-5 py-3">
+  <div class="footer-content">
+     <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+  </div>
+  
+
+  
+
+  
+</footer>
+
+
+  <!-- SCRIPTS -->
+  
+  <script  src="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" ></script>
+<script  src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+<!-- Plugins -->
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+  
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/tocbot@4.12.3/dist/tocbot.min.js" ></script>
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" ></script>
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/anchor-js@4.3.1/anchor.min.js" ></script>
+
+
+
+  <script defer src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js" ></script>
+
+
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12/lib/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var title = document.getElementById('subtitle').title;
+      
+      typing(title)
+      
+    })(window, document);
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 主题的启动项 保持在最底部 -->
+<script  src="/js/boot.js" ></script>
+
+
+</body>
+</html>

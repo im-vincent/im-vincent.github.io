@@ -1,0 +1,478 @@
+
+
+<!DOCTYPE html>
+<html lang="en" data-default-color-scheme=&#34;auto&#34;>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/favicon.png">
+  <link rel="icon" href="/img/favicon.png">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="description" content="">
+  <meta name="author" content="John Doe">
+  <meta name="keywords" content="">
+  
+  <title>Deep learning 使用云GPU主机配置 - Hexo</title>
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" />
+
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@4.0.0/github-markdown.min.css" />
+  <link  rel="stylesheet" href="/lib/hint/hint.min.css" />
+
+  
+    
+    
+      
+      <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@10.7.2/styles/github-gist.min.css" />
+    
+  
+
+  
+    <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" />
+  
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_ba1fz6golrf.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_kmeydafke9r.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+<!-- 自定义样式保持在最底部 -->
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.8.11","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"right","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"copy_btn":true,"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null}},"search_path":"/local-search.xml"};
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+
+<body>
+  <header style="height: 70vh;">
+    <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand"
+       href="/">&nbsp;<strong>Fluid</strong>&nbsp;</a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                Home
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                Archives
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                Categories
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                Tags
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                About
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" data-toggle="modal" data-target="#modalSearch">&nbsp;<i
+                class="iconfont icon-search"></i>&nbsp;</a>
+          </li>
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+    <div class="banner" id="banner" parallax=true
+         style="background: url('/img/default.png') no-repeat center center;
+           background-size: cover;">
+      <div class="full-bg-img">
+        <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+          <div class="page-header text-center fade-in-up">
+            <span class="h2" id="subtitle" title="Deep learning 使用云GPU主机配置">
+              
+            </span>
+
+            
+              <div class="mt-3">
+  
+  
+    <span class="post-meta">
+      <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+      <time datetime="2018-11-13 16:08" pubdate>
+        November 13, 2018 pm
+      </time>
+    </span>
+  
+</div>
+
+<div class="mt-1">
+  
+    
+    <span class="post-meta mr-2">
+      <i class="iconfont icon-chart"></i>
+      607 字
+    </span>
+  
+
+  
+    
+    <span class="post-meta mr-2">
+      <i class="iconfont icon-clock-fill"></i>
+      
+      
+      8
+       分钟
+    </span>
+  
+
+  
+  
+</div>
+
+            
+          </div>
+
+          
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="d-none d-lg-block col-lg-2"></div>
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div class="py-5" id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Deep learning 使用云GPU主机配置</h1>
+            
+            <div class="markdown-body">
+              <h1 id="GPU云主机配置"><a href="#GPU云主机配置" class="headerlink" title="GPU云主机配置"></a>GPU云主机配置</h1><p>深度学习对计算要求太高了，没有高配的电脑，只好搭建GPU云主机。使用价格相对便宜的滴滴云。</p>
+<ul>
+<li>GPU主机的基本配置</li>
+<li>anaconda的安装和依赖包的安装</li>
+<li>jupyter_notebooks的使用</li>
+</ul>
+<h2 id="配置主机"><a href="#配置主机" class="headerlink" title="配置主机"></a>配置主机</h2><p>控制台-&gt;创建云服务器-&gt;GPU云服务器-&gt;选择镜像(一定选择gpu驱动的)</p>
+<p>网络带宽这块由于初始需要安装更新，建议使用10M左右的贷款。以为云是按时间计费的，网络慢在时间上花的钱会更多。</p>
+<p>等分配公网ip后可以使用ssh工具登陆了。</p>
+<h2 id="anconda3安装"><a href="#anconda3安装" class="headerlink" title="anconda3安装"></a>anconda3安装</h2><p>首先安装anconda3，使用的是清华下载镜像，国外网速会超级慢，用wget下载安装文件</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-attribute">wget</span> https://mirrors.tuna.tsinghua.edu.cn/anaconda/archive/Anaconda<span class="hljs-number">3</span>-<span class="hljs-number">5</span>.<span class="hljs-number">2</span>.<span class="hljs-number">0</span>-Linux-x<span class="hljs-number">86</span>_<span class="hljs-number">64</span>.sh<br><br><span class="hljs-attribute">sh</span> Anaconda<span class="hljs-number">3</span>-<span class="hljs-number">5</span>.<span class="hljs-number">2</span>.<span class="hljs-number">0</span>-Linux-x<span class="hljs-number">86</span>_<span class="hljs-number">64</span>.sh<br></code></pre></td></tr></table></figure>
+
+<p>设置anaconda install源：</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs routeros">conda<span class="hljs-built_in"> config </span>--<span class="hljs-builtin-name">add</span> channels <span class="hljs-string">&#x27;https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/&#x27;</span><br>conda<span class="hljs-built_in"> config </span>--<span class="hljs-builtin-name">set</span> show_channel_urls <span class="hljs-literal">yes</span><br></code></pre></td></tr></table></figure>
+
+<h2 id="jupyter-notebook的使用"><a href="#jupyter-notebook的使用" class="headerlink" title="jupyter notebook的使用"></a>jupyter notebook的使用</h2><p>创建jupyter notebook环境，附带的会安装一些依赖包。</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs routeros">conda create -n jupyter_notebook <span class="hljs-attribute">python</span>=3<br></code></pre></td></tr></table></figure>
+
+<p>激活环境</p>
+<figure class="highlight applescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs applescript">source <span class="hljs-built_in">activate</span> jupyter_notebook<br></code></pre></td></tr></table></figure>
+
+<p>jupyter notebook环境中安装依赖包</p>
+<figure class="highlight mipsasm"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs mipsasm">coda <span class="hljs-keyword">install </span><span class="hljs-keyword">jupyter </span>notebook<br></code></pre></td></tr></table></figure>
+
+<p>tensorflow-gpu安装</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-comment"># 默认会安装1.3然后和本地写出来的程序不兼容，更新最新的也会报错。无奈使用1.4</span><br><span class="hljs-attribute">conda</span> install tensorflow-gpu=<span class="hljs-number">1</span>.<span class="hljs-number">4</span><br></code></pre></td></tr></table></figure>
+
+<p>测试显卡：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs python">In [<span class="hljs-number">1</span>]: <span class="hljs-keyword">import</span> tensorflow <span class="hljs-keyword">as</span> tf<br>In [<span class="hljs-number">2</span>]: <span class="hljs-built_in">print</span>(<span class="hljs-string">&#x27;tensorflow version:&#123;&#125;&#x27;</span>.<span class="hljs-built_in">format</span>(tf.__version__))<br>tensorflow version:<span class="hljs-number">1.3</span><span class="hljs-number">.0</span><br>In [<span class="hljs-number">3</span>]: <span class="hljs-built_in">print</span>(<span class="hljs-string">&#x27;default gpu device &#123;&#125;&#x27;</span>.<span class="hljs-built_in">format</span>(tf.test.gpu_device_name()))<br>device: <span class="hljs-number">0</span>, name: Tesla M60, pci bus <span class="hljs-built_in">id</span>: <span class="hljs-number">0000</span>:<span class="hljs-number">00</span>:<span class="hljs-number">15.0</span><br></code></pre></td></tr></table></figure>
+
+<p>jupyter notebook的配置：<br>需要生成jupyter notebook配置文件</p>
+<figure class="highlight verilog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs verilog">(jupyter_notebook) tream@Tream733:/root$ jupyter notebook --<span class="hljs-keyword">generate</span>-<span class="hljs-keyword">config</span><br>Writing <span class="hljs-keyword">default</span> <span class="hljs-keyword">config</span> to: /home/tream/<span class="hljs-variable">.jupyter</span>/jupyter_notebook_config<span class="hljs-variable">.py12</span><br></code></pre></td></tr></table></figure>
+
+<p>调用ipython设置jupyter notebook密码</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs awk">(jupyter_notebook) tream@Tream733:/root$ ipython<br>Python <span class="hljs-number">3.6</span>.<span class="hljs-number">2</span> |Continuum Analytics, Inc.| (default, Jul <span class="hljs-number">20</span> <span class="hljs-number">2017</span>, <span class="hljs-number">13</span>:<span class="hljs-number">51</span>:<span class="hljs-number">32</span>) <br>Type <span class="hljs-string">&#x27;copyright&#x27;</span>, <span class="hljs-string">&#x27;credits&#x27;</span> or <span class="hljs-string">&#x27;license&#x27;</span> <span class="hljs-keyword">for</span> more information<br>IPython <span class="hljs-number">6.1</span>.<span class="hljs-number">0</span> -- An enhanced Interactive Python. Type <span class="hljs-string">&#x27;?&#x27;</span> <span class="hljs-keyword">for</span> help.<br>In [<span class="hljs-number">1</span>]: from notebook.auth import passwd<br>In [<span class="hljs-number">2</span>]: passwd()<br>Enter password: <br>Verify password: <br>Out[<span class="hljs-number">2</span>]: <span class="hljs-string">&#x27;sha1:b804cd47ff66:7c1d4a54809c54c356ae406b05c4c50767cc7958&#x27;</span><br>In [<span class="hljs-number">3</span>]: <span class="hljs-keyword">exit</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>记录下’sha1:b804cd47ff66:7c1d4a54809c54c356ae406b05c4c50767cc7958’，在文件配置时候要用。<br>配置jupyter notebook的config文件</p>
+</blockquote>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-attribute">tream</span>@Tream<span class="hljs-number">733</span>:/root$ vi /home/tream/.jupyter/jupyter_notebook_config.py<span class="hljs-number">1</span><br><span class="hljs-attribute">c</span>.NotebookApp.ip = &#x27;*&#x27;<br><span class="hljs-attribute">c</span>.NotebookApp.password = &#x27;sha<span class="hljs-number">1</span>:b<span class="hljs-number">804</span>cd<span class="hljs-number">47</span>ff<span class="hljs-number">66</span>:<span class="hljs-number">7</span>c<span class="hljs-number">1</span>d<span class="hljs-number">4</span>a<span class="hljs-number">54809</span>c<span class="hljs-number">54</span>c<span class="hljs-number">356</span>ae<span class="hljs-number">406</span>b<span class="hljs-number">05</span>c<span class="hljs-number">4</span>c<span class="hljs-number">50767</span>cc<span class="hljs-number">7958</span>&#x27;<br><span class="hljs-attribute">c</span>.NotebookApp.open_browser = False<br></code></pre></td></tr></table></figure>
+
+<p>启动</p>
+<figure class="highlight ebnf"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs ebnf"><span class="hljs-attribute">jupyter notebook</span><br></code></pre></td></tr></table></figure>
+
+<hr>
+<p>保存快照，设置暴露8888端口就可以愉快的使用了。</p>
+<p>使用完了记得要删除云主机，下次使用的时候用快照恢复就可以。 快照有免费的20G额度。</p>
+
+            </div>
+            <hr>
+            <div>
+              <div class="post-metas mb-3">
+                
+                
+                  <div class="post-meta">
+                    <i class="iconfont icon-tags"></i>
+                    
+                      <a class="hover-with-bg" href="/tags/deep-learning/">deep learning</a>
+                    
+                  </div>
+                
+              </div>
+              
+                <p class="note note-warning">
+                  
+                    本博客所有文章除特别声明外，均采用 <a target="_blank" href="https://creativecommons.org/licenses/by-sa/4.0/deed.zh" rel="nofollow noopener noopener">CC BY-SA 4.0 协议</a> ，转载请注明出处！
+                  
+                </p>
+              
+              
+                <div class="post-prevnext">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2018/11/13/Linux-%E4%BD%BF%E7%94%A8ntp%E6%9C%8D%E5%8A%A1%E6%97%B6%E9%97%B4%E5%90%8C%E6%AD%A5/">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Linux-使用ntp服务时间同步</span>
+                        <span class="visible-mobile">Previous</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2018/11/13/Linux-lvm%E9%80%BB%E8%BE%91%E5%8D%B7%E6%89%A9%E5%B1%95%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/">
+                        <span class="hidden-mobile">Linux lvm逻辑卷扩展文件系统</span>
+                        <span class="visible-mobile">Next</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+    
+      <div class="d-none d-lg-block col-lg-2 toc-container" id="toc-ctn">
+        <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;TOC</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+      </div>
+    
+  </div>
+</div>
+
+<!-- Custom -->
+
+
+    
+
+    
+      <a id="scroll-top-button" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">Search</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v"
+                 for="local-search-input">keyword</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    
+  </main>
+
+  <footer class="text-center mt-5 py-3">
+  <div class="footer-content">
+     <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+  </div>
+  
+
+  
+
+  
+</footer>
+
+
+  <!-- SCRIPTS -->
+  
+  <script  src="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" ></script>
+<script  src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+<!-- Plugins -->
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+  
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/tocbot@4.12.3/dist/tocbot.min.js" ></script>
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" ></script>
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/anchor-js@4.3.1/anchor.min.js" ></script>
+
+
+
+  <script defer src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js" ></script>
+
+
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12/lib/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var title = document.getElementById('subtitle').title;
+      
+      typing(title)
+      
+    })(window, document);
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 主题的启动项 保持在最底部 -->
+<script  src="/js/boot.js" ></script>
+
+
+</body>
+</html>

@@ -213,7 +213,414 @@ Quick
     </article>
   </div>
 
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2019/09/19/Hive%E5%88%86%E6%9E%90%E7%AA%97%E5%8F%A3%E5%87%BD%E6%95%B0/" target="_self">
+          Hive分析窗口函数
+        </a>
+      </h1>
 
+      <p class="index-excerpt">
+        <a href="/2019/09/19/Hive%E5%88%86%E6%9E%90%E7%AA%97%E5%8F%A3%E5%87%BD%E6%95%B0/" target="_self">
+          
+          
+            
+          
+          转自http://lxw1234.com/
+Hive分析窗口函数(一) SUM,AVG,MIN,MAXHive中提供了越来越多的分析函数，用于完成负责的统计分析。抽时间将所有的分析窗口函数理一遍，将陆续发布。
+今天先看几个基础的，SUM、AVG、MIN、MAX。
+用于实现分组内所有和连续累积的统计。
+数据准备12345678910111213141516171819202122CREATE EXT
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2019-09-19 16:51" pubdate>
+              2019-09-19
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/hive/">hive</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2019/09/18/linux-%E4%B8%8B%E5%88%9B%E5%BB%BA%E8%99%9A%E6%8B%9F%E7%8E%AF%E5%A2%83-python/" target="_self">
+          linux 下创建虚拟环境 python
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2019/09/18/linux-%E4%B8%8B%E5%88%9B%E5%BB%BA%E8%99%9A%E6%8B%9F%E7%8E%AF%E5%A2%83-python/" target="_self">
+          
+          
+            
+          
+          linux 下创建虚拟环境 pythonvirtualenv是一个可以在同一计算机中隔离多个python版本的工具。有时，两个不同的项目可能需要不同版本的python，如 python2.7 / python3.6 ，但是如果都装到一起，经常会导致问题。virtualenv能够用于创建独立的Python虚拟环境，多个Python相互独立，互不影响。virtualenvwrapper这个软件包可以让
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2019-09-18 15:02" pubdate>
+              2019-09-18
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/python/">python</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2019/08/22/alluxio-ha-cluster/" target="_self">
+          alluxio ha cluster
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2019/08/22/alluxio-ha-cluster/" target="_self">
+          
+          
+            
+          
+          alluxio ha clusteralluxio-site.properties设置1234567891011121314vi conf/alluxio-site.properties# 每个master节点就写自己的alluxio.master.hostname=node01.hadoop.cis# 使用zookeeper获取masteralluxio.zookeeper.enabled=tr
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2019-08-22 16:16" pubdate>
+              2019-08-22
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/alluxio/">alluxio</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2019/03/22/%E5%9F%BA%E4%BA%8Ehive%E8%BF%9B%E8%A1%8C%E7%AE%80%E5%8D%95%E5%8E%8B%E7%BC%A9%E6%8A%80%E6%9C%AF%E6%B5%8B%E8%AF%95/" target="_self">
+          基于hive进行简单压缩技术测试
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2019/03/22/%E5%9F%BA%E4%BA%8Ehive%E8%BF%9B%E8%A1%8C%E7%AE%80%E5%8D%95%E5%8E%8B%E7%BC%A9%E6%8A%80%E6%9C%AF%E6%B5%8B%E8%AF%95/" target="_self">
+          
+          
+            
+          
+          下载测试数据
+1wget http://www.almhuette-raith.at/apache-log/access.log
+
+
+
+准备测试数据，在hive中建立apachelog
+123456789101112131415CREATE TABLE apachelog ( ipaddress STRING, identity STRING, user STRING, time STRING, 
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2019-03-22 14:20" pubdate>
+              2019-03-22
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/hadoop/">hadoop</a>
+            
+              <a href="/tags/hive/">hive</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2019/03/19/Hadoop-%E5%B0%8F%E6%96%87%E4%BB%B6%E5%BC%95%E5%8F%91%E7%9A%84%E8%A1%80%E6%A1%88/" target="_self">
+          Hadoop 小文件引发的血案
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2019/03/19/Hadoop-%E5%B0%8F%E6%96%87%E4%BB%B6%E5%BC%95%E5%8F%91%E7%9A%84%E8%A1%80%E6%A1%88/" target="_self">
+          
+          
+            
+          
+          Hadoop: HDFS/YARN/MapReduce1HDFS has a master/slave architecture. An HDFS cluster consists of a single NameNode, a master server that manages the file system namespace and regulates access to files by
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2019-03-19 15:32" pubdate>
+              2019-03-19
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/hadoop/">hadoop</a>
+            
+              <a href="/tags/big-data/">big data</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2019/02/15/Oracle-pl-sql%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95/" target="_self">
+          Oracle pl/sql学习记录
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2019/02/15/Oracle-pl-sql%E5%AD%A6%E4%B9%A0%E8%AE%B0%E5%BD%95/" target="_self">
+          
+          
+            
+          
+          
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2019-02-15 16:44" pubdate>
+              2019-02-15
+            </time>
+          </div>
+        
+        
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2019/01/24/brew-%E5%AE%89%E8%A3%85%E6%89%A7%E8%A1%8C%E7%89%88%E6%9C%ACgolang/" target="_self">
+          brew 安装执行版本golang
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2019/01/24/brew-%E5%AE%89%E8%A3%85%E6%89%A7%E8%A1%8C%E7%89%88%E6%9C%ACgolang/" target="_self">
+          
+          
+            
+          
+          如何使用homebrew如何安装指定版本的golang版本？
+
+删除、解绑之前的版本 brew uninstall go &amp;&amp; brew unlink go
+查找可用的go版本brew search go
+安装需要的版本brew install go@1.9
+链接brew link go@1.9 --force
+
+
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2019-01-24 09:31" pubdate>
+              2019-01-24
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/brew/">brew</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2018/12/13/Vps-%E7%BB%BC%E5%90%88%E6%B5%8B%E8%AF%95/" target="_self">
+          Vps 综合测试
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2018/12/13/Vps-%E7%BB%BC%E5%90%88%E6%B5%8B%E8%AF%95/" target="_self">
+          
+          
+            
+          
+          12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758596061 =========================================================  \                 Superbenc
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2018-12-13 14:32" pubdate>
+              2018-12-13
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/vps/">vps</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2018/12/10/Oracle-asm%E5%8F%98%E6%9B%B4%E7%89%A9%E7%90%86%E7%A3%81%E7%9B%98/" target="_self">
+          Oracle asm变更物理磁盘
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2018/12/10/Oracle-asm%E5%8F%98%E6%9B%B4%E7%89%A9%E7%90%86%E7%A3%81%E7%9B%98/" target="_self">
+          
+          
+            
+          
+          12345678910111213SQL&gt; set linesize 300SQL&gt; set pagesize 10000SQL&gt; col path for a30SQL&gt; select a.path, a.name, a.mode_status, b.name diskgroupname, b.type  2    from v$asm_disk a, v$asm_dis
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2018-12-10 14:25" pubdate>
+              2018-12-10
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/oracle/">oracle</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+
+
+  <nav aria-label="navigation">
+    <span class="pagination" id="pagination">
+      <span class="page-number current">1</span><a class="page-number" href="/page/2/#board">2</a><a class="page-number" href="/page/3/#board">3</a><span class="space">&hellip;</span><a class="page-number" href="/page/5/#board">5</a><a class="extend next" rel="next" href="/page/2/#board"><i class="iconfont icon-arrowright"></i></a>
+    </span>
+  </nav>
 
 
 

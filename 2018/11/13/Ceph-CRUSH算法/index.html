@@ -1,0 +1,705 @@
+
+
+<!DOCTYPE html>
+<html lang="en" data-default-color-scheme=&#34;auto&#34;>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/favicon.png">
+  <link rel="icon" href="/img/favicon.png">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="description" content="">
+  <meta name="author" content="John Doe">
+  <meta name="keywords" content="">
+  
+  <title>Ceph CRUSH算法 - Hexo</title>
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" />
+
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@4.0.0/github-markdown.min.css" />
+  <link  rel="stylesheet" href="/lib/hint/hint.min.css" />
+
+  
+    
+    
+      
+      <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@10.7.2/styles/github-gist.min.css" />
+    
+  
+
+  
+    <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" />
+  
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_ba1fz6golrf.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_kmeydafke9r.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+<!-- 自定义样式保持在最底部 -->
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.8.11","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"right","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"copy_btn":true,"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null}},"search_path":"/local-search.xml"};
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+
+<body>
+  <header style="height: 70vh;">
+    <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand"
+       href="/">&nbsp;<strong>Fluid</strong>&nbsp;</a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                Home
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                Archives
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                Categories
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                Tags
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                About
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" data-toggle="modal" data-target="#modalSearch">&nbsp;<i
+                class="iconfont icon-search"></i>&nbsp;</a>
+          </li>
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+    <div class="banner" id="banner" parallax=true
+         style="background: url('/img/default.png') no-repeat center center;
+           background-size: cover;">
+      <div class="full-bg-img">
+        <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+          <div class="page-header text-center fade-in-up">
+            <span class="h2" id="subtitle" title="Ceph CRUSH算法">
+              
+            </span>
+
+            
+              <div class="mt-3">
+  
+  
+    <span class="post-meta">
+      <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+      <time datetime="2018-11-13 15:45" pubdate>
+        November 13, 2018 pm
+      </time>
+    </span>
+  
+</div>
+
+<div class="mt-1">
+  
+    
+    <span class="post-meta mr-2">
+      <i class="iconfont icon-chart"></i>
+      6.4k 字
+    </span>
+  
+
+  
+    
+    <span class="post-meta mr-2">
+      <i class="iconfont icon-clock-fill"></i>
+      
+      
+      73
+       分钟
+    </span>
+  
+
+  
+  
+</div>
+
+            
+          </div>
+
+          
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="d-none d-lg-block col-lg-2"></div>
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div class="py-5" id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Ceph CRUSH算法</h1>
+            
+            <div class="markdown-body">
+              <blockquote>
+<p>转自<a target="_blank" rel="noopener" href="http://xuxiaopang.com/">徐小胖’blog</a></p>
+<p>可能会添加自己的理解或者其他，请自行过滤。</p>
+</blockquote>
+<h2 id="引言"><a href="#引言" class="headerlink" title="引言"></a>引言</h2><blockquote>
+<p>那么问题来了，把一份数据存到一群Server中分几步？</p>
+</blockquote>
+<p>Ceph的答案是：两步。</p>
+<ol>
+<li>计算PG</li>
+<li>计算OSD</li>
+</ol>
+<h2 id="计算PG"><a href="#计算PG" class="headerlink" title="计算PG"></a>计算PG</h2><p>首先，要明确Ceph的一个规定：在Ceph中，一切皆对象。</p>
+<p>不论是视频，文本，照片等一切格式的数据，Ceph统一将其看作是对象，因为追其根源，所有的数据都是二进制数据保存于磁盘上，所以每一份二进制数据都看成一个对象，不以它们的格式来区分他们。</p>
+<p>那么用什么来区分两个对象呢？<strong>对象名</strong>。也就是说，每个不同的对象都有不一样的对象名。于是，开篇的问题就变成了：</p>
+<blockquote>
+<p>把一个对象存到一群Server中分几步？</p>
+</blockquote>
+<p>这里的一群Server，由Ceph组织成一个集群，这个集群由若干的磁盘组成，也就是由若干的OSD组成。于是，继续简化问题：</p>
+<blockquote>
+<p>把一个对象存到一堆OSD中分几步?</p>
+</blockquote>
+<h2 id="Ceph中的逻辑层"><a href="#Ceph中的逻辑层" class="headerlink" title="Ceph中的逻辑层"></a>Ceph中的逻辑层</h2><p>Ceph为了保存一个对象，对上构建了一个逻辑层，也就是池(pool)，用于保存对象，这个池的翻译很好的解释了pool的特征，如果把pool比喻成一个中国象棋棋盘，那么保存一个对象的过程就类似于把一粒芝麻放置到棋盘上。</p>
+<p><a target="_blank" rel="noopener" href="http://ww1.sinaimg.cn/large/6e46250bly1fezuxxovkzj20m80h90zs.jpg"><img src="http://ww1.sinaimg.cn/large/6e46250bly1fezuxxovkzj20m80h90zs.jpg" srcset="/img/loading.gif" lazyload alt="img"></a></p>
+<p>Pool再一次进行了细分，即将一个pool划分为若干的PG(归置组 Placement Group)，这类似于棋盘上的方格，所有的方格构成了整个棋盘，也就是说所有的PG构成了一个pool。</p>
+<blockquote>
+<p>Ceph 把客户端数据保存为存储池内的对象。通过使用 CRUSH 算法， Ceph 可以计算出哪个归置组（PG）应该持有指定的对象(Object)，然后进一步计算出哪个 OSD 守护进程持有该归置组。 CRUSH 算法使得 Ceph 存储集群能够动态地伸缩、再均衡和修复</p>
+<ul>
+<li>Pool 棋盘</li>
+<li>Placement Group 棋盘格</li>
+<li>Object 棋子</li>
+</ul>
+</blockquote>
+<p>现在需要解决的问题是，对象怎么知道要保存到哪个PG上，假定这里我们的pool名叫rbd，共有256个PG，给每个PG编个号分别叫做<code>0x0, 0x1, ...0xF, 0x10, 0x11... 0xFE, 0xFF</code>。</p>
+<p>要解决这个问题，我们先看看我们拥有什么，1，不同的对象名。2，不同的PG编号。这里就可以引入Ceph的计算方法了 : HASH。</p>
+<p>对于对象名分别为<code>bar</code>和<code>foo</code>的两个对象，对他们的对象名进行计算即:</p>
+<ul>
+<li>HASH(‘bar’) = 0x3E0A4162</li>
+<li>HASH(‘foo’) = 0x7FE391A0</li>
+<li>HASH(‘bar’) = 0x3E0A4162</li>
+</ul>
+<p>对对象名进行HASH后，得到了一串十六进制输出值，也就是说通过HASH我们将一个对象名转化成了一串数字，那么上面的第一行和第三行是一样的有什么意义？ 意义就是对于一个同样的对象名，计算出来的结果永远都是一样的，但是HASH算法的确将对象名计算得出了一个随机数。</p>
+<p>有了这个输出，我们使用小学就会的方法：求余数！用随机数除以PG的总数256，得到的余数一定会落在[0x0, 0xFF]之间，也就是这256个PG中的某一个：</p>
+<ul>
+<li>0x3E0A4162 % 0xFF ===&gt; 0x62</li>
+<li>0x7FE391A0 % 0xFF ===&gt; 0xA0</li>
+</ul>
+<p>于是乎，对象<code>bar</code>保存到编号为<code>0x62</code>的PG中，对象<code>foo</code>保存到编号为<code>0xA0</code>的PG中。对象<code>bar</code>永远都会保存到PG 0x62中！ 对象<code>foo</code>永远都会保存到PG 0xA0中！</p>
+<p>现在又来了一亿个对象，他们也想知道自己会保存到哪个PG中，Ceph说：“自己算”。于是这一亿个对象，各自对自己对象名进行HASH，得到输出后除以PG总数得到的余数就是要保存的PG。</p>
+<p>求余的好处就是对象数量规模越大，每个PG分布的对象数量就越平均。</p>
+<p>所以每个对象自有名字开始，他们要保存到的PG就已经确定了。</p>
+<p>那么爱思考的小明同学就会提出一个问题，难道不管对象的高矮胖瘦都是一样的使用这种方法计算PG吗，答案是，YES! 也就是说Ceph不区分对象的真实大小内容以及任何形式的格式，只认对象名。毕竟当对象数达到百万级时，对象的分布从宏观上来看还是平均的。</p>
+<p>这里给出更Ceph一点的说明，实际上在Ceph中，存在着多个pool，每个pool里面存在着若干的PG，如果两个pool里面的PG编号相同，Ceph怎么区分呢? 于是乎，Ceph对每个pool进行了编号，比如刚刚的rbd池，给予编号0，再建一个pool就给予编号1，那么在Ceph里，PG的实际编号是由<code>pool_id+.+PG_id</code>组成的，也就是说，刚刚的<code>bar</code>对象会保存在<code>0.62</code>这个PG里，<code>foo</code>这个对象会保存在<code>0.A0</code>这个PG里。其他池里的PG名称可能为<code>1.12f, 2.aa1,10.aa1</code>等。</p>
+<h2 id="Ceph中的物理层"><a href="#Ceph中的物理层" class="headerlink" title="Ceph中的物理层"></a>Ceph中的物理层</h2><p>理解了刚刚的逻辑层，我们再看一下Ceph里的物理层，对下，也就是我们若干的服务器上的磁盘，通常，Ceph将一个磁盘看作一个OSD(实际上，OSD是管理一个磁盘的程序)，于是物理层由若干的OSD组成，我们的最终目标是将对象保存到磁盘上，在逻辑层里，对象是保存到PG里面的，那么现在的任务就是<code>打通PG和OSD之间的隧道</code>。PG相当于一堆余数相同的对象的组合，PG把这一部分对象打了个包，现在我们需要把很多的包平均的安放在各个OSD上，这就是CRUSH算法所要做的事情：<code>CRUSH计算PG-&gt;OSD的映射关系</code>。</p>
+<p>加上刚刚的对象映射到PG的方法，我们将开篇的两步表示成如下的两个计算公式：</p>
+<ul>
+<li>池ID + HASH(‘对象名’) % pg_num ===&gt; PG_ID</li>
+<li>CRUSH(PG_ID) ===&gt; OSD</li>
+</ul>
+<h2 id="使用HASH代替CRUSH？"><a href="#使用HASH代替CRUSH？" class="headerlink" title="使用HASH代替CRUSH？"></a>使用HASH代替CRUSH？</h2><p>在讨论CRUSH算法之前，我们来做一点思考，可以发现，上面两个计算公式有点类似，为何我们不把</p>
+<ul>
+<li><code>CRUSH(PG_ID) ===&gt; OSD</code><br>改为</li>
+<li><code>HASH(PG_ID) %OSD_num ===&gt; OSD</code></li>
+</ul>
+<p>我可以如下几个由此假设带来的副作用：</p>
+<ul>
+<li>如果挂掉一个OSD，<code>OSD_num-1</code>，于是所有的<code>PG % OSD_num</code>的余数都会变化，也就是说这个PG保存的磁盘发生了变化，对这最简单的解释就是，这个PG上的数据要从一个磁盘全部迁移到另一个磁盘上去，一个优秀的存储架构应当在磁盘损坏时使得数据迁移量降到最低，CRUSH可以做到。</li>
+<li>如果保存多个副本，我们希望得到多个OSD结果的输出，HASH只能获得一个，但是CRUSH可以获得任意多个。</li>
+<li>如果增加OSD的数量，OSD_num增大了，同样会导致PG在OSD之间的胡乱迁移，但是CRUSH可以保证数据向新增机器均匀的扩散。</li>
+</ul>
+<p>所以HASH只适用于一对一的映射关系计算，并且两个映射组合(对象名和PG总数)不能变化，因此这里的假设不适用于PG-&gt;OSD的映射计算。因此，这里开始引入CRUSH算法。</p>
+<h2 id="引入CRUSH算法"><a href="#引入CRUSH算法" class="headerlink" title="引入CRUSH算法"></a>引入CRUSH算法</h2><p>千呼万唤始出来，终于开始讲CRUSH算法了，如果直接讲Sage的博士论文或者<code>crush.c</code>的代码的话，可能会十分苦涩难懂，所以我决定尝试大话一把CRUSH，希望能让没有接触过CRUSH的同学也能对其有所理解。</p>
+<p>首先来看我们要做什么：</p>
+<ul>
+<li>把已有的PG_ID映射到OSD上，有了映射关系就可以把一个PG保存到一个磁盘上。</li>
+<li>如果我们想保存三个副本，可以把一个PG映射到三个不同的OSD上，这三个OSD上保存着一模一样的PG内容。</li>
+</ul>
+<p>再来看我们有了什么：</p>
+<ul>
+<li>互不相同的PG_ID。</li>
+<li>如果给OSD也编个号，那么就有了互不相同的OSD_ID。</li>
+<li>每个OSD最大的不同的就是它们的容量，即4T还是800G的容量，我们将每个OSD的容量又称为OSD的权重(weight)，规定4T权重为4，800G为0.8，也就是以T为单位的值。</li>
+</ul>
+<p>现在问题转化为：如何将PG_ID映射到有各自权重的OSD上。这里我直接使用CRUSH里面采取的<code>Straw</code>算法，翻译过来就是抽签，说白了就是挑个最长的签，这里的签指的是OSD的权重。</p>
+<p>那么问题就来了，总不至于每次都挑容量最大的OSD吧，这不分分钟都把数据存满那个最大的 OSD了吗？是的，所以在挑之前先把这些OSD<code>搓一搓</code>，这里直接介绍CRUSH的方法，如下图(可忽视代码直接看文字)：</p>
+<p><a target="_blank" rel="noopener" href="http://www.xuxiaopang.com/images/1478244507156.png"><img src="http://www.xuxiaopang.com/images/1478244507156.png" srcset="/img/loading.gif" lazyload alt="Alt text"></a></p>
+<ul>
+<li>CRUSH_HASH( PG_ID, OSD_ID, r ) ===&gt; draw</li>
+<li>( draw &amp;0xffff ) * osd_weight ===&gt; osd_straw</li>
+<li>pick up high_osd_straw</li>
+</ul>
+<p>第一行，我们姑且把r当做一个常数，第一行实际上就做了搓一搓的事情:将PG_ID, OSD_ID和r一起当做CRUSH_HASH的输入，求出一个十六进制输出，这和HASH(对象名)完全类似，只是多了两个输入。所以需要强调的是，对于相同的三个输入，计算得出的<code>draw</code>的值是一定相同的。</p>
+<p>这个<code>draw</code>到底有啥用？其实，CRUSH希望得到一个随机数，也就是这里的<code>draw</code>，然后拿这个随机数去乘以OSD的权重，这样把随机数和OSD的权重搓在一起，就得到了每个OSD的实际签长，而且每个签都不一样长(极大概率)，就很容易从中挑一个最长的。</p>
+<p>说白了，CRUSH希望<code>随机</code>挑一个OSD出来，但是还要满足权重越大的OSD被挑中的概率越大，为了达到随机的目的，它在挑之前让每个OSD都拿着自己的权重乘以一个随机数，再取乘积最大的那个。那么这里我们再定个小目标：挑个一亿次！从宏观来看，同样是乘以一个随机数，在样本容量足够大之后，这个随机数对挑中的结果不再有影响，起决定性影响的是OSD的权重，也就是说，OSD的权重越大，宏观来看被挑中的概率越大。</p>
+<p>这里再说明下CRUSH造出来的随机数<code>draw</code>，前文可知，对于常量输入，一定会得到一样的输出，所以这并不是真正的随机，所以说，CRUSH是一个<code>伪随机</code>算法。下图是<code>CRUSH_HASH</code>的代码段，我喜欢叫它搅拌搅拌再搅拌得出一个随机数:</p>
+<p><a target="_blank" rel="noopener" href="http://www.xuxiaopang.com/images/1478244378743.png"><img src="http://www.xuxiaopang.com/images/1478244378743.png" srcset="/img/loading.gif" lazyload alt="Alt text"></a></p>
+<p>如果看到这里你已经被搅晕了，那让我再简单梳理下PG选择一个OSD时做的事情：</p>
+<ul>
+<li>给出一个PG_ID，作为CRUSH_HASH的输入。</li>
+<li>CRUSH_HASH(PG_ID, OSD_ID, r) 得出一个随机数(重点是随机数，不是HASH)。</li>
+<li>对于所有的OSD用他们的权重乘以每个OSD_ID对应的随机数，得到乘积。</li>
+<li>选出乘积最大的OSD。</li>
+<li>这个PG就会保存到这个OSD上。</li>
+</ul>
+<p>现在趁热打铁，解决一个PG映射到多个OSD的问题，还记得那个常量<code>r</code>吗？我们把<code>r+1</code>，再求一遍随机数，再去乘以每个OSD的权重，再去选出乘积最大的OSD，如果和之前的OSD编号不一样，那么就选中它，如果和之前的OSD编号一样的话，那么再把<code>r+2</code>，再次选一次，直到选出我们需要的三个不一样编号的OSD为止！</p>
+<p>当然实际选择过程还要稍微复杂一点，我这里只是用最简单的方法来解释CRUSH在选择OSD的时候所做的事情。</p>
+<p>下面我们来举个例子，假定我们有6个OSD，需要从中选出三个副本：</p>
+<table>
+<thead>
+<tr>
+<th>osd_id</th>
+<th>weight</th>
+<th>CRUSH_HASH</th>
+<th>(CRUSH_HASH &amp; 0xffff)* weight</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>osd.0</td>
+<td>4</td>
+<td>0xC35E90CB</td>
+<td>0x2432C</td>
+</tr>
+<tr>
+<td>osd.1</td>
+<td>4</td>
+<td>0xA67DE680</td>
+<td><strong>0x39A00</strong></td>
+</tr>
+<tr>
+<td>osd.2</td>
+<td>4</td>
+<td>0xF9B1B224</td>
+<td>0x2C890</td>
+</tr>
+<tr>
+<td>osd.3</td>
+<td>4</td>
+<td>0x42454470</td>
+<td>0x111C0</td>
+</tr>
+<tr>
+<td>osd.4</td>
+<td>4</td>
+<td>0xE950E2F9</td>
+<td>0x38BE4</td>
+</tr>
+<tr>
+<td>osd.5</td>
+<td>4</td>
+<td>0x8A844538</td>
+<td>0x114E0</td>
+</tr>
+</tbody></table>
+<p>这是<code>r = 0</code>的情况，这时候，我们选出<code>(CRUSH_HASH &amp; 0xFFFF) * weight</code>的值最大的一个，也就是<code>osd.1</code>的<code>0x39A00</code>,这就是我们选出的第一个OSD。<br>然后，我们再让<code>r = 1</code>，再生成一组<code>CRUSH_HASH</code>的随机值，乘以OSD的weight，再取一个最大的得到第二个OSD，依此得到第三个OSD，如果在此过程中，选中了相同的OSD，那么将<code>r</code>再加一，生成一组随机值，再选一次，直到选中三个OSD为止。</p>
+<h2 id="CRUSH算法的应用"><a href="#CRUSH算法的应用" class="headerlink" title="CRUSH算法的应用"></a>CRUSH算法的应用</h2><p>理解了上面CRUSH选择OSD的过程，我们就很容易进一步将CRUSH算法结合实际结构，这里给出Sage在他的博士论文中画的一个树状结构图：<br><a target="_blank" rel="noopener" href="http://www.xuxiaopang.com/images/1478486778573.png"><img src="http://www.xuxiaopang.com/images/1478486778573.png" srcset="/img/loading.gif" lazyload alt="Alt text"></a></p>
+<p>最下面的蓝色长条可以看成一个个主机，里面的灰色圆柱形可以看成一个个OSD，紫色的cabinet可以也就是一个个机柜， 绿色的row可以看成一排机柜，顶端的root是我们的根节点，没有实际意义，你可以把它看成一个数据中心的意思，也可以看成一个机房的意思，不过只是起到了一个树状结构的根节点的作用。</p>
+<p>基于这样的结构选择OSD，我们提出了新的要求：</p>
+<ul>
+<li>一共选出三个OSD。</li>
+<li>这三个OSD需要都位于一个row下面。</li>
+<li>每个cabinet内至多有一个OSD。</li>
+</ul>
+<p>这样的要求，如果用上一节的CRUSH选OSD的方法，不能满足二三两个要求，因为OSD的分布是随机的。</p>
+<p>那么要完成这样的要求，先看看我们现在有什么：</p>
+<ul>
+<li>每个OSD的weight。</li>
+<li>每个主机也可以有一个weight，这个weight由主机内的所有OSD的weight累加而得。</li>
+<li>每个cabinet的weight由所有主机的weight累加而得，其实就是这个cabinet下的所有OSD的权重之和。</li>
+<li>同理推得每个row的weight有cabinet累加而得。</li>
+<li>root的weight其实就是所有的OSD的权重之和。</li>
+</ul>
+<p>所以在这棵树状结构中，每个节点都有了自己的权重，每个节点的权重由<code>下一层</code>节点的权重累加而得，因此根节点root的权重就是这个集群所有的OSD的权重之和，那么有了这么多权重之后，我们怎么选出那三个OSD呢？</p>
+<p>仿照CRUSH选OSD的方法：</p>
+<ul>
+<li>CRUSH从root下的所有的row中选出一个row。</li>
+<li>在刚刚的一个row下面的所有cabinet中，CRUSH选出三个cabinet。</li>
+<li>在刚刚的三个cabinet下面的所有OSD中，CRUSH分别选出一个OSD。</li>
+</ul>
+<p>因为每个row都有自己的权重，所以CRUSH选row的方法和选OSD的方法完全一样，用row的权重乘以一个随机数，取最大。然后在这个row下面继续选出三个cabinet，再在每个cabinet下面选出一个OSD。</p>
+<p>这样做的根本意义在于，将数据平均分布在了这个集群里面的所有OSD上，如果两台机器的权重是16：32，那么这两台机器上分布的数据量也是1：2。同时，这样选择做到了三个OSD分布在三个不同的cabinet上。</p>
+<p>那么结合图例这里给出CRUSH算法的流程：</p>
+<ul>
+<li>take(root) ============&gt; [root]</li>
+<li>choose(1, row) ========&gt; [row2]</li>
+<li>choose(3, cabinet) =====&gt; [cab21, cab23, cab24] <em>在[row2]下</em></li>
+<li>choose(1, osd) ========&gt; [osd2107, osd2313, osd2437] <em>在三个cab下</em></li>
+<li>emit ================&gt; [osd2107, osd2313, osd2437]</li>
+</ul>
+<p>这里给出CRUSH算法的两个重要概念：</p>
+<ul>
+<li>BUCKET/OSD : OSD和我们的磁盘一一对应，bucket是除了OSD以外的所有非子叶节点，比如上面的cabinet,row,root等都是。</li>
+<li>RULE ： CRUSH选择遵循一条条选择路径，一个选择路径就是一个rule。</li>
+</ul>
+<p>RULE一般分为三步走 : <code>take</code>–&gt;<code>choose N</code>–&gt;<code>emit</code>。<code>Take</code>这一步负责选择一个根节点，这个根节点不一定是<code>root</code>，也可以是任何一个Bucket。<code>choose N</code>做的就是按照每个Bucket的weight以及每个<code>choose</code>语句选出符合条件的Bucket，并且，<strong>下一个choose的选择对象为上一步得到的结果</strong>。<code>emit</code>就是输出最终结果，相当于出栈。</p>
+<p>这里再举个简单的例子，也就是我们最常见的三个主机每个主机三个OSD的结构：<br><a target="_blank" rel="noopener" href="http://www.xuxiaopang.com/images/1478497045877.png"><img src="http://www.xuxiaopang.com/images/1478497045877.png" srcset="/img/loading.gif" lazyload alt="Alt text"></a></p>
+<p>我们要从三个host下面各选出一个OSD，使得三个副本各落在一个host上，这时候，就能保证挂掉两个host，还有一个副本在运行了，那么这样的RULE就形如：</p>
+<ul>
+<li>take(root) ============&gt; [default] 注意是根节点的名字</li>
+<li>choose(3, host) ========&gt; [ceph-1, ceph-2, ceph-3]</li>
+<li>choose(1, osd) ========&gt; [osd.3, osd.1, osd.8]</li>
+<li>emit()</li>
+</ul>
+<p>这里我们来简单总结一下：我们把一个生产环境的机房画成一个树状结构，最下面一层为OSD层，每个OSD有自己的权重，OSD的上面由host/rack/row/room/root等等节点构成，每个节点的权重都是由下层的节点累加而成，CRUSH选择每个节点的算法(straw)都是一样的，用它们的weight乘以一个随机数取其中最大，只是我们通过<code>choose</code>的语句来判断选择的节点类型和个数。最后不要忘了选出来的结果是PG-&gt;OSD的映射，比如:<code>pg 0.a2 ---&gt; [osd.3, osd.1, osd.8]</code>和<code>pg 0.33 ---&gt; [osd.0, osd.5, osd.7]</code>, 每个PG都有自己到OSD的映射关系，这个关系用公式总结就是： <code>CRUSH(pg_id) ---&gt; [osd.a, osd.b ...osd.n]</code>。</p>
+<p>到目前为止，我们已经完成了一份数据保存到一群Server的第二步，再整体回顾下这个流程：</p>
+<ul>
+<li>每个文件都有一个唯一的对象名。</li>
+<li>Pool_ID + HASH(对象名) % PG_NUM 得到PG_ID</li>
+<li>CRUSH(PG_ID) 得到该PG将要保存的OSD组合</li>
+<li>这个对象就会保存到位于这些OSD上的PG上(PG就是磁盘上的目录)</li>
+</ul>
+<p>所以，HASH算法负责计算对象名到PG的映射，CRUSH负责计算PG到OSD的映射，暂且记住这一点。</p>
+<h2 id="CRUSH里的虚虚实实"><a href="#CRUSH里的虚虚实实" class="headerlink" title="CRUSH里的虚虚实实"></a>CRUSH里的虚虚实实</h2><p>现在，我们有三台主机，每台主机上的配置如下：</p>
+<table>
+<thead>
+<tr>
+<th>主机名</th>
+<th>磁盘数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ceph-1</td>
+<td>4T SATA <em>3 800G SSD</em> 1</td>
+</tr>
+<tr>
+<td>ceph-2</td>
+<td>4T SATA <em>3 800G SSD</em> 1</td>
+</tr>
+<tr>
+<td>ceph-3</td>
+<td>4T SATA <em>3 800G SSD</em> 1</td>
+</tr>
+</tbody></table>
+<p>但是想要构建成如下的结构：<br><a target="_blank" rel="noopener" href="http://www.xuxiaopang.com/images/1478501078240.png"><img src="http://www.xuxiaopang.com/images/1478501078240.png" srcset="/img/loading.gif" lazyload alt="Alt text"></a></p>
+<p>这里我们不能把一台主机劈成两半把SATA盘和SSD各分一半，所以就来介绍下CRUSH里面的虚虚实实，什么是实？所有的OSD都是实实在在的节点！什么是虚？除了OSD之外的所有Bucket都是虚的！</p>
+<p>也就是说，我们可以建立几个Bucket，分别名叫<code>ceph-1-sata</code>,<code>root-sata</code>,<code>ceph-1-ssd</code>, <code>root-ssd</code>，而这些Bucket不需要和实际结构有任何关系，可以看成是我们假想出来的结构，为了达到分层的目的，我们可以假象出任意形式的bucket。</p>
+<p>将所有的SATA添加到<code>ceph-x-sata</code>节点下，再将<code>ceph-x-sata</code>加入到根节点<code>root-sata</code>下，同理处理剩下的三个SSD盘。那么现在可以制定两个RULE：</p>
+<ul>
+<li>rule-sata：<ul>
+<li>take(root-sata)</li>
+<li>choose(3, host)</li>
+<li>choose(1, osd)</li>
+<li>emit</li>
+</ul>
+</li>
+<li>rule-ssd:<ul>
+<li>take(root-ssd)</li>
+<li>choose(3, host)</li>
+<li>choose(1, osd)</li>
+<li>emit</li>
+</ul>
+</li>
+</ul>
+<p>具体的建造指令可以参考之前的<a target="_blank" rel="noopener" href="http://xuxiaopang.com/2016/10/10/ceph-full-install-el7-jewel/#%E8%87%AA%E5%AE%9A%E4%B9%89crush">自定义CRUSH一节</a></p>
+<p>这一节想要说明的是，CRUSH里面的节点除了OSD之外的所有bucket都是可以自定义的，并不需要和实际的物理结构相关，但要记住这样做的目的是将OSD分开，从而建立适当的RULE去选择OSD，所以不要把树状结构建立的脱离了实际情况，比如从三个机器上各挑一个OSD然后放到一个自定义的host节点下，虽然可以这样做，但是是没有意义的，说白了要根据自己的数据分布要求去构建OSD树结构，因为CRUSH只认RULE,并不知道你底层的实际结构！！！</p>
+<p>甚至，你可以像<a target="_blank" rel="noopener" href="http://cephnotes.ksperis.com/blog/2015/02/02/crushmap-example-of-a-hierarchical-cluster-map/">这篇文章</a>里面一样构建出花式的树状结构！一切都在于你的想象力以及集群的应用需求。</p>
+<p><a target="_blank" rel="noopener" href="http://www.xuxiaopang.com/images/1478503163385.png"><img src="http://www.xuxiaopang.com/images/1478503163385.png" srcset="/img/loading.gif" lazyload alt="Alt text"></a></p>
+<h2 id="Ceph中的CRUSH"><a href="#Ceph中的CRUSH" class="headerlink" title="Ceph中的CRUSH"></a>Ceph中的CRUSH</h2><p>现在再正式介绍CRUSH算法在Ceph中的存在形式，首先导出一个集群的CRUSH Map:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br></pre></td><td class="code"><pre><code class="hljs python">[root@ceph-<span class="hljs-number">1</span> ~]<span class="hljs-comment"># ceph osd getcrushmap -o /tmp/map</span><br>got crush <span class="hljs-built_in">map</span> <span class="hljs-keyword">from</span> osdmap epoch <span class="hljs-number">67</span><br>[root@ceph-<span class="hljs-number">1</span> ~]<span class="hljs-comment"># crushtool -d /tmp/map -o /tmp/map.txt </span><br>[root@ceph-<span class="hljs-number">1</span> ~]<span class="hljs-comment"># cat /tmp/map.txt </span><br><span class="hljs-comment"># begin crush map</span><br>tunable choose_local_tries <span class="hljs-number">0</span><br>tunable choose_local_fallback_tries <span class="hljs-number">0</span><br>tunable choose_total_tries <span class="hljs-number">50</span><br>tunable chooseleaf_descend_once <span class="hljs-number">1</span><br>tunable straw_calc_version <span class="hljs-number">1</span><br><br><span class="hljs-comment"># devices</span><br>device <span class="hljs-number">0</span> osd<span class="hljs-number">.0</span><br>device <span class="hljs-number">1</span> osd<span class="hljs-number">.1</span><br>device <span class="hljs-number">2</span> osd<span class="hljs-number">.2</span><br>device <span class="hljs-number">3</span> osd<span class="hljs-number">.3</span><br>device <span class="hljs-number">4</span> osd<span class="hljs-number">.4</span><br>device <span class="hljs-number">5</span> osd<span class="hljs-number">.5</span><br>device <span class="hljs-number">6</span> osd<span class="hljs-number">.6</span><br>device <span class="hljs-number">7</span> osd<span class="hljs-number">.7</span><br>device <span class="hljs-number">8</span> osd<span class="hljs-number">.8</span><br><br><span class="hljs-comment"># types</span><br><span class="hljs-built_in">type</span> <span class="hljs-number">0</span> osd<br><span class="hljs-built_in">type</span> <span class="hljs-number">1</span> host<br><span class="hljs-built_in">type</span> <span class="hljs-number">2</span> chassis<br><span class="hljs-built_in">type</span> <span class="hljs-number">3</span> rack<br><span class="hljs-built_in">type</span> <span class="hljs-number">4</span> row<br><span class="hljs-built_in">type</span> <span class="hljs-number">5</span> pdu<br><span class="hljs-built_in">type</span> <span class="hljs-number">6</span> pod<br><span class="hljs-built_in">type</span> <span class="hljs-number">7</span> room<br><span class="hljs-built_in">type</span> <span class="hljs-number">8</span> datacenter<br><span class="hljs-built_in">type</span> <span class="hljs-number">9</span> region<br><span class="hljs-built_in">type</span> <span class="hljs-number">10</span> root<br><br><span class="hljs-comment"># buckets</span><br>host ceph-<span class="hljs-number">2</span> &#123;<br>	<span class="hljs-built_in">id</span> -<span class="hljs-number">2</span>		<span class="hljs-comment"># do not change unnecessarily</span><br>	<span class="hljs-comment"># weight 5.970</span><br>	alg straw<br>	<span class="hljs-built_in">hash</span> <span class="hljs-number">0</span>	<span class="hljs-comment"># rjenkins1</span><br>	item osd<span class="hljs-number">.0</span> weight <span class="hljs-number">1.990</span><br>	item osd<span class="hljs-number">.1</span> weight <span class="hljs-number">1.990</span><br>	item osd<span class="hljs-number">.2</span> weight <span class="hljs-number">1.990</span><br>&#125;<br>host ceph-<span class="hljs-number">1</span> &#123;<br>	<span class="hljs-built_in">id</span> -<span class="hljs-number">3</span>		<span class="hljs-comment"># do not change unnecessarily</span><br>	<span class="hljs-comment"># weight 5.970</span><br>	alg straw<br>	<span class="hljs-built_in">hash</span> <span class="hljs-number">0</span>	<span class="hljs-comment"># rjenkins1</span><br>	item osd<span class="hljs-number">.3</span> weight <span class="hljs-number">1.990</span><br>	item osd<span class="hljs-number">.4</span> weight <span class="hljs-number">1.990</span><br>	item osd<span class="hljs-number">.5</span> weight <span class="hljs-number">1.990</span><br>&#125;<br>host ceph-<span class="hljs-number">3</span> &#123;<br>	<span class="hljs-built_in">id</span> -<span class="hljs-number">4</span>		<span class="hljs-comment"># do not change unnecessarily</span><br>	<span class="hljs-comment"># weight 5.970</span><br>	alg straw<br>	<span class="hljs-built_in">hash</span> <span class="hljs-number">0</span>	<span class="hljs-comment"># rjenkins1</span><br>	item osd<span class="hljs-number">.6</span> weight <span class="hljs-number">1.990</span><br>	item osd<span class="hljs-number">.7</span> weight <span class="hljs-number">1.990</span><br>	item osd<span class="hljs-number">.8</span> weight <span class="hljs-number">1.990</span><br>&#125;<br>root default &#123;<br>	<span class="hljs-built_in">id</span> -<span class="hljs-number">1</span>		<span class="hljs-comment"># do not change unnecessarily</span><br>	<span class="hljs-comment"># weight 17.910</span><br>	alg straw<br>	<span class="hljs-built_in">hash</span> <span class="hljs-number">0</span>	<span class="hljs-comment"># rjenkins1</span><br>	item ceph-<span class="hljs-number">2</span> weight <span class="hljs-number">5.970</span><br>	item ceph-<span class="hljs-number">1</span> weight <span class="hljs-number">5.970</span><br>	item ceph-<span class="hljs-number">3</span> weight <span class="hljs-number">5.970</span><br>&#125;<br><br><span class="hljs-comment"># rules</span><br>rule replicated_ruleset &#123;<br>	ruleset <span class="hljs-number">0</span><br>	<span class="hljs-built_in">type</span> replicated<br>	min_size <span class="hljs-number">1</span><br>	max_size <span class="hljs-number">10</span><br>	step take default<br>	step chooseleaf firstn <span class="hljs-number">0</span> <span class="hljs-built_in">type</span> host<br>	step emit<br>&#125;<br><br><span class="hljs-comment"># end crush map</span><br>[root@ceph-<span class="hljs-number">1</span> ~]<span class="hljs-comment">#</span><br></code></pre></td></tr></table></figure>
+
+<p>简单介绍下几个区域的意义：</p>
+<ul>
+<li><code>tunable</code>：还记得<code>CRUSH_HASH</code>算法中的<code>r</code>变量吗，选择失败的时候这个值经常会自加一，<code>choose_total_tries 50</code>这个50就是用来限定总共失败的次数的，CRUSH算法本身是个递归算法，所以给定一个总共失败次数防止算法无限选择失败。那么如果要选出3副本，选失败了50次只选出一个OSD，那么最终结果是？CRUSH将输出<code>[osd.a， ，]</code>这样的输出，也就是说只给出一个OSD，一般很少会遇到这种情况，除非你要从一个只有一个host的root下面去选出三个host。</li>
+<li><code>devices</code> : 就是所有的OSD的集合。</li>
+<li><code>types</code>: 就是集群内所有的Bucket+OSD的类型的取值范围，所有的Bucket都要属于这些类型，当然，你可以自己增删这里给出的类型，注意<code>type</code>后面的数字必须唯一，因为CRUSH算法在保存类型时不是使用字符串，而是类型对应的数字，所以类型名称在CRUSH眼里是没有意义的。</li>
+<li><code>buckets</code>：就是树上的除了OSD以外的节点，从内容来看可以发现，每个bucket都有向下包含关系，这里看到ID和类型的ID是一样的，CRUSH在底层并不保存节点的名称字符串，而是以数字保存的，值得一提的是，OSD的ID是大于等于零的，bucket的ID是小于零的。还有就是<code>alg straw</code>，因为straw是最公平的选择方法，其实还有三个算法(uniform, tree, list)，因为没有straw综合分高，所以就不介绍了。</li>
+<li><code>rules</code>： 最下面的rule区域是我们修改的最多的地方，<code>replicated_ruleset</code>这个是这个rule的名称，需要唯一，同样CRUSH只保存这个rule的ID，其ID就是<code>ruleset 0</code>这里的<code>0</code>,所以需要添加一个rule的时候需要注意名称和ID都不能重复。下面的三个<code>step</code>就是RULE的三步走策略，里面具体的参数我就不再赘述，可以<a target="_blank" rel="noopener" href="http://docs.ceph.com/docs/master/rados/operations/crush-map/">参考官方文档的这一章</a>。</li>
+</ul>
+<p>还是简单的讲解下这句<code>step chooseleaf firstn 0 type host</code>， 实际的RULE里面分为<code>choose</code>和<code>chooseleaf</code>两种，其中<code>choose</code>用于选择多个Bucket，Bucket是最终选择结果，相当于<code>choose(3, Bucket)</code>。<code>chooseleaf</code>用于选择多个Bucket，并在这些Bucket下各选出一个OSD，OSD是最终选择结果，相当于<code>choose(3, Bucket) + choose(1, osd)</code>。<code>type</code>后面的<code>host</code>就是要选择的Bucket类型。<code>firstn</code>后面的<code>0</code>,是选择的副本数，<code>0</code>等于副本数，也就是3的意思，具体参考官方文档的解释。</p>
+<p>所以Sage论文中的图，对应到实际CRUSH的RULE就是：</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs routeros">rule Sage_Paper &#123;<br>	ruleset 0<br><span class="hljs-built_in">	type </span>replicated<br>	min_size 1<br>	max_size 10<br>	<span class="hljs-keyword">step</span> take root<br>	<span class="hljs-keyword">step</span> choose firstn 1<span class="hljs-built_in"> type </span>row<br>	<span class="hljs-keyword">step</span> chooseleaf firstn 0<span class="hljs-built_in"> type </span>cabinet<br>	<span class="hljs-keyword">step</span> emit<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>介绍完了这两步走的核心流程之后，最后再着重强调下<code>计算</code>两字，可以发现，从对象计算PG再到PG计算OSD组合，从头到尾都是通过计算得到最终的映射关系的，但是这些计算不论放在客户端还是服务器端，计算的结果都是相同的，因为里面所谓的随机值都是伪随机，只要传入一样的输入得到的输出结果都是一样的，所以Ceph把计算对象存储位置的任务发放给客户端，实际上，客户端在计算完一个对象需要保存的OSD之后，直接和OSD建立通讯，将数据直接存入OSD中，只要集群的Map没有变化，客户端和服务端计算出来的保存位置都是一样的，所以这大大的降低了服务器端的计算压力。</p>
+<p>本文没有直接介绍CRUSH算法，而是从<code>把一个对象存进Ceph</code>的流程来分析，着重解释了对象到PG的映射，PG到OSD的映射这两个流程，介绍了它们的计算方法。</p>
+<p>最后再给一个别人画的计算路径图，仅供理解。<br><a target="_blank" rel="noopener" href="http://www.xuxiaopang.com/images/1478573403493.png"><img src="http://www.xuxiaopang.com/images/1478573403493.png" srcset="/img/loading.gif" lazyload alt="Alt text"></a></p>
+
+            </div>
+            <hr>
+            <div>
+              <div class="post-metas mb-3">
+                
+                
+                  <div class="post-meta">
+                    <i class="iconfont icon-tags"></i>
+                    
+                      <a class="hover-with-bg" href="/tags/ceph/">ceph</a>
+                    
+                  </div>
+                
+              </div>
+              
+                <p class="note note-warning">
+                  
+                    本博客所有文章除特别声明外，均采用 <a target="_blank" href="https://creativecommons.org/licenses/by-sa/4.0/deed.zh" rel="nofollow noopener noopener">CC BY-SA 4.0 协议</a> ，转载请注明出处！
+                  
+                </p>
+              
+              
+                <div class="post-prevnext">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2018/11/13/Linux-iptables%E8%AE%BE%E7%BD%AE%E5%8F%AA%E5%85%81%E8%AE%B8%E7%89%B9%E5%AE%9Amac%E5%9C%B0%E5%9D%80%E3%80%81%E7%AB%AF%E5%8F%A3%E8%AE%BF%E9%97%AE/">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Linux iptables设置只允许特定mac地址、端口访问</span>
+                        <span class="visible-mobile">Previous</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2018/11/13/Ceph-%E4%BF%AE%E6%94%B9mon%E7%9B%B8%E5%85%B3%E9%85%8D%E7%BD%AE/">
+                        <span class="hidden-mobile">Ceph 修改mon相关配置</span>
+                        <span class="visible-mobile">Next</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+    
+      <div class="d-none d-lg-block col-lg-2 toc-container" id="toc-ctn">
+        <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;TOC</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+      </div>
+    
+  </div>
+</div>
+
+<!-- Custom -->
+
+
+    
+
+    
+      <a id="scroll-top-button" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">Search</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v"
+                 for="local-search-input">keyword</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    
+  </main>
+
+  <footer class="text-center mt-5 py-3">
+  <div class="footer-content">
+     <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+  </div>
+  
+
+  
+
+  
+</footer>
+
+
+  <!-- SCRIPTS -->
+  
+  <script  src="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" ></script>
+<script  src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+<!-- Plugins -->
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+  
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/tocbot@4.12.3/dist/tocbot.min.js" ></script>
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" ></script>
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/anchor-js@4.3.1/anchor.min.js" ></script>
+
+
+
+  <script defer src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js" ></script>
+
+
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12/lib/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var title = document.getElementById('subtitle').title;
+      
+      typing(title)
+      
+    })(window, document);
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 主题的启动项 保持在最底部 -->
+<script  src="/js/boot.js" ></script>
+
+
+</body>
+</html>

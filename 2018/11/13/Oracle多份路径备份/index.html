@@ -1,0 +1,435 @@
+
+
+<!DOCTYPE html>
+<html lang="en" data-default-color-scheme=&#34;auto&#34;>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/favicon.png">
+  <link rel="icon" href="/img/favicon.png">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="description" content="">
+  <meta name="author" content="John Doe">
+  <meta name="keywords" content="">
+  
+  <title>Oracle多份路径备份 - Hexo</title>
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" />
+
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@4.0.0/github-markdown.min.css" />
+  <link  rel="stylesheet" href="/lib/hint/hint.min.css" />
+
+  
+    
+    
+      
+      <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@10.7.2/styles/github-gist.min.css" />
+    
+  
+
+  
+    <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" />
+  
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_ba1fz6golrf.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_kmeydafke9r.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+<!-- 自定义样式保持在最底部 -->
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.8.11","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"right","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"copy_btn":true,"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null}},"search_path":"/local-search.xml"};
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+
+<body>
+  <header style="height: 70vh;">
+    <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand"
+       href="/">&nbsp;<strong>Fluid</strong>&nbsp;</a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                Home
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                Archives
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                Categories
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                Tags
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                About
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" data-toggle="modal" data-target="#modalSearch">&nbsp;<i
+                class="iconfont icon-search"></i>&nbsp;</a>
+          </li>
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+    <div class="banner" id="banner" parallax=true
+         style="background: url('/img/default.png') no-repeat center center;
+           background-size: cover;">
+      <div class="full-bg-img">
+        <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+          <div class="page-header text-center fade-in-up">
+            <span class="h2" id="subtitle" title="Oracle多份路径备份">
+              
+            </span>
+
+            
+              <div class="mt-3">
+  
+  
+    <span class="post-meta">
+      <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+      <time datetime="2018-11-13 14:43" pubdate>
+        November 13, 2018 pm
+      </time>
+    </span>
+  
+</div>
+
+<div class="mt-1">
+  
+    
+    <span class="post-meta mr-2">
+      <i class="iconfont icon-chart"></i>
+      436 字
+    </span>
+  
+
+  
+    
+    <span class="post-meta mr-2">
+      <i class="iconfont icon-clock-fill"></i>
+      
+      
+      8
+       分钟
+    </span>
+  
+
+  
+  
+</div>
+
+            
+          </div>
+
+          
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="d-none d-lg-block col-lg-2"></div>
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div class="py-5" id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Oracle多份路径备份</h1>
+            
+            <div class="markdown-body">
+              <h4 id="建立备份目录"><a href="#建立备份目录" class="headerlink" title="建立备份目录"></a>建立备份目录</h4><figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs stata"><span class="hljs-keyword">cd</span> /backup<br><span class="hljs-keyword">mkdir</span> data rman logs <span class="hljs-keyword">arch</span><br></code></pre></td></tr></table></figure>
+
+<h4 id="配置rman"><a href="#配置rman" class="headerlink" title="配置rman"></a>配置rman</h4><figure class="highlight ada"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs ada">rman target /<br><br>CONFIGURE DATAFILE BACKUP COPIES <span class="hljs-keyword">FOR</span> DEVICE <span class="hljs-keyword">TYPE</span> <span class="hljs-type">DISK </span>TO <span class="hljs-number">2</span>;<br>CONFIGURE ARCHIVELOG BACKUP COPIES <span class="hljs-keyword">FOR</span> DEVICE <span class="hljs-keyword">TYPE</span> <span class="hljs-type">DISK </span>TO <span class="hljs-number">2</span>;<br></code></pre></td></tr></table></figure>
+
+<h4 id="配置rman-backup-twoaddr-sh"><a href="#配置rman-backup-twoaddr-sh" class="headerlink" title="配置rman_backup_twoaddr.sh"></a>配置rman_backup_twoaddr.sh</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br></pre></td><td class="code"><pre><code class="hljs shell"><span class="hljs-meta">#</span><span class="bash">!/bin/ksh</span><br>export LANG=en_US<br>BACKUP_DATE=`date +%d`<br>RMAN_LOG_FILE=/opt/backup/logs/rmanlog`date +%Y%m%d`.out<br>TODAY=`date`<br>USER=`id|cut -d &quot;(&quot; -f2|cut -d &quot;)&quot; -f1`<br>echo &quot;-----------------$TODAY-------------------&quot;&gt;$RMAN_LOG_FILE<br>ORACLE_HOME=/opt/ora10g/db_1<br>export ORACLE_HOME<br>RMAN=$ORACLE_HOME/bin/rman<br>export RMAN<br>ORACLE_SID=zmedi<br>export ORACLE_SID<br>ORACLE_USER=oracle<br>export ORACLE_USER<br><br>echo &quot;ORACLE_SID: $ORACLE_SID&quot;&gt;&gt;$RMAN_LOG_FILE<br>echo &quot;ORACLE_HOME:$ORACLE_HOME&quot;&gt;&gt;$RMAN_LOG_FILE<br>echo &quot;ORACLE_USER:$ORACLE_USER&quot;&gt;&gt;$RMAN_LOG_FILE<br>echo &quot;==========================================&quot;&gt;&gt;$RMAN_LOG_FILE<br>echo &quot;BACKUP DATABASE BEGIN......&quot;&gt;&gt;$RMAN_LOG_FILE<br>echo &quot;                   &quot;&gt;&gt;$RMAN_LOG_FILE<br>chmod 666 $RMAN_LOG_FILE<br><br>WEEK_DAILY=`date +%a`<br>case  &quot;$WEEK_DAILY&quot; in<br>       &quot;Mon&quot;)<br>            BAK_LEVEL=2<br>            ;;<br>       &quot;Tue&quot;)<br>            BAK_LEVEL=2<br>            ;;<br>       &quot;Wed&quot;)<br>            BAK_LEVEL=2<br>            ;;<br>       &quot;Thu&quot;)<br>            BAK_LEVEL=1<br>            ;;<br>       &quot;Fri&quot;)<br>            BAK_LEVEL=2<br>            ;;<br>       &quot;Sat&quot;)<br>            BAK_LEVEL=2<br>            ;;<br>       &quot;Sun&quot;)<br>            BAK_LEVEL=0<br>            ;;<br>       &quot;*&quot;)<br>            BAK_LEVEL=error<br>esac<br><br>export BAK_LEVEL=$BAK_LEVEL<br>echo &quot;Today is : $WEEK_DAILY  incremental level= $BAK_LEVEL&quot;&gt;&gt;$RMAN_LOG_FILE<br><br>RUN_STR=&quot;<br>BAK_LEVEL=$BAK_LEVEL<br>export BAK_LEVEL<br>ORACLE_HOME=$ORACLE_HOME<br>export ORACLE_HOME<br>ORACLE_SID=$ORACLE_SID<br>export ORACLE_SID<br><span class="hljs-meta">$</span><span class="bash">RMAN nocatalog TARGET / msglog <span class="hljs-variable">$RMAN_LOG_FILE</span> append &lt;&lt;<span class="hljs-string">EOF</span></span><br>run<br>&#123;<br>allocate channel c1 type disk MAXPIECESIZE=64G;<br>allocate channel c2 type disk MAXPIECESIZE=64G;<br>allocate channel c3 type disk MAXPIECESIZE=64G;<br>allocate channel c4 type disk MAXPIECESIZE=64G;<br>backup as compressed backupset incremental level= $BAK_LEVEL  skip inaccessible  <br>Database format=&#x27;/opt/backup/data/lev&quot;$BAK_LEVEL&quot;_%d_%U&#x27;,&#x27;/opt/nfsbackup/246zgwdb/rmanbackup/data/lev&quot;$BAK_LEVEL&quot;_%d_%U&#x27; tag=&#x27;lev&quot;$BAK_LEVEL&quot;&#x27;<br>plus archivelog format=&#x27;/opt/backup/data/arch_%d_%U&#x27;,&#x27;/opt/nfsbackup/246zgwdb/rmanbackup/data/arch_%d_%U&#x27; delete input;<br>release channel c1;<br>release channel c2;<br>release channel c3;<br>release channel c4;<br>&#125;<br>allocate channel for maintenance device type disk;<br>report obsolete;<br>delete noprompt obsolete;<br>crosscheck backup;<br>delete noprompt expired backup;<br>list backup summary;<br>release channel;<br>EOF<br>&quot;<br><span class="hljs-meta"> #</span><span class="bash"><span class="hljs-string"> Initiate the command string</span></span><br><br>if [ &quot;$CUSER&quot; = &quot;root&quot; ]<br>then<br>    echo &quot;Root Command String: $RUN_STR&quot; &gt;&gt; $RMAN_LOG_FILE    <br>    su - $ORACLE_USER -c &quot;$RUN_STR&quot; &gt;&gt; $RMAN_LOG_FILE<br>    RSTAT=$?<br>else<br>    echo &quot;User Command String: $RUN_STR&quot; &gt;&gt; $RMAN_LOG_FILE    <br>    /bin/sh -c &quot;$RUN_STR&quot; &gt;&gt; $RMAN_LOG_FILE<br>    RSTAT=$?<br>fi<br><span class="hljs-meta"></span><br><span class="hljs-meta">#</span><span class="bash"><span class="hljs-string"> ---------------------------------------------------------------------------</span></span><br><span class="hljs-meta">#</span><span class="bash"><span class="hljs-string"> Log the completion of this script.</span></span><br><span class="hljs-meta">#</span><span class="bash"><span class="hljs-string"> ---------------------------------------------------------------------------</span></span><br><br>if [ &quot;$RSTAT&quot; = &quot;0&quot; ]<br>then<br>    LOGMSG=&quot;ended successfully&quot;<br>else<br>    LOGMSG=&quot;ended in error&quot;<br>fi<br>echo &gt;&gt; $RMAN_LOG_FILE<br>echo Script $0 &gt;&gt; $RMAN_LOG_FILE<br>echo ==== $LOGMSG on `date` ==== &gt;&gt; $RMAN_LOG_FILE<br>echo &gt;&gt; $RMAN_LOG_FILE<br>exit $RSTAT<br></code></pre></td></tr></table></figure>
+            </div>
+            <hr>
+            <div>
+              <div class="post-metas mb-3">
+                
+                
+                  <div class="post-meta">
+                    <i class="iconfont icon-tags"></i>
+                    
+                      <a class="hover-with-bg" href="/tags/oracle/">oracle</a>
+                    
+                  </div>
+                
+              </div>
+              
+                <p class="note note-warning">
+                  
+                    本博客所有文章除特别声明外，均采用 <a target="_blank" href="https://creativecommons.org/licenses/by-sa/4.0/deed.zh" rel="nofollow noopener noopener">CC BY-SA 4.0 协议</a> ，转载请注明出处！
+                  
+                </p>
+              
+              
+                <div class="post-prevnext">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2018/11/13/Mongodb%E5%B9%82%E7%AD%89%E6%80%A7%E7%9A%84%E4%BB%A3%E4%BB%B7/">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Mongodb幂等性的代价</span>
+                        <span class="visible-mobile">Previous</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2018/11/13/MongoDB-Manage-Sharded-Cluster-Balancer/">
+                        <span class="hidden-mobile">MongoDB Manage Sharded Cluster Balancer</span>
+                        <span class="visible-mobile">Next</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+    
+      <div class="d-none d-lg-block col-lg-2 toc-container" id="toc-ctn">
+        <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;TOC</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+      </div>
+    
+  </div>
+</div>
+
+<!-- Custom -->
+
+
+    
+
+    
+      <a id="scroll-top-button" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">Search</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v"
+                 for="local-search-input">keyword</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    
+  </main>
+
+  <footer class="text-center mt-5 py-3">
+  <div class="footer-content">
+     <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+  </div>
+  
+
+  
+
+  
+</footer>
+
+
+  <!-- SCRIPTS -->
+  
+  <script  src="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" ></script>
+<script  src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+<!-- Plugins -->
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+  
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/tocbot@4.12.3/dist/tocbot.min.js" ></script>
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js" ></script>
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/anchor-js@4.3.1/anchor.min.js" ></script>
+
+
+
+  <script defer src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js" ></script>
+
+
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12/lib/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var title = document.getElementById('subtitle').title;
+      
+      typing(title)
+      
+    })(window, document);
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 主题的启动项 保持在最底部 -->
+<script  src="/js/boot.js" ></script>
+
+
+</body>
+</html>

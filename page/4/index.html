@@ -1,0 +1,794 @@
+
+
+<!DOCTYPE html>
+<html lang="en" data-default-color-scheme=&#34;auto&#34;>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/favicon.png">
+  <link rel="icon" href="/img/favicon.png">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="description" content="">
+  <meta name="author" content="John Doe">
+  <meta name="keywords" content="">
+  
+  <title>Hexo</title>
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_ba1fz6golrf.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_kmeydafke9r.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+<!-- 自定义样式保持在最底部 -->
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.8.11","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"right","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"copy_btn":true,"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null}},"search_path":"/local-search.xml"};
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+<meta name="generator" content="Hexo 5.4.0"></head>
+
+
+<body>
+  <header style="height: 100vh;">
+    <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand"
+       href="/">&nbsp;<strong>Fluid</strong>&nbsp;</a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                Home
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                Archives
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                Categories
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                Tags
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                About
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" data-toggle="modal" data-target="#modalSearch">&nbsp;<i
+                class="iconfont icon-search"></i>&nbsp;</a>
+          </li>
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+    <div class="banner" id="banner" parallax=true
+         style="background: url('/img/default.png') no-repeat center center;
+           background-size: cover;">
+      <div class="full-bg-img">
+        <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+          <div class="page-header text-center fade-in-up">
+            <span class="h2" id="subtitle" title="An elegant Material-Design theme for Hexo">
+              
+            </span>
+
+            
+          </div>
+
+          
+            <div class="scroll-down-bar">
+              <i class="iconfont icon-arrowdown"></i>
+            </div>
+          
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    
+      <div class="container nopadding-x-md">
+        <div class="py-5" id="board"
+          style=margin-top:0>
+          
+          <div class="container">
+            <div class="row">
+              <div class="col-12 col-md-10 m-auto">
+                
+
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2018/11/13/Ceph-RBD%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/" target="_self">
+          Ceph RBD安装配置
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2018/11/13/Ceph-RBD%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/" target="_self">
+          
+          
+            
+          
+          Ceph RBD 安装配置安装ceph主要想测试Kubernetes的Persistent Volume功能，以为现在无状态的容器已经可以做的很好了。现在kubernetes新功能也就是有状态服务，例如mysql等。pod可以在不同的节点调度迁移，所以需要可以挂载到同一个持久化volume。
+官方文档,个人建议文档类都应该先阅读官方文档，大致了解其含义。而不是看某某的博客之类的。
+安装环境规划使用
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2018-11-13 15:18" pubdate>
+              2018-11-13
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/ceph/">ceph</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2018/11/13/Oracle%E4%BD%BF%E7%94%A8PL-SQL%E5%AF%BC%E5%87%BAcsv%E6%96%87%E4%BB%B6/" target="_self">
+          Oracle使用PL/SQL导出csv文件
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2018/11/13/Oracle%E4%BD%BF%E7%94%A8PL-SQL%E5%AF%BC%E5%87%BAcsv%E6%96%87%E4%BB%B6/" target="_self">
+          
+          
+            
+          
+          建立存储过程
+1234567891011121314151617181920212223242526272829303132333435363738394041424344454647create or replace procedure dump_table_to_csv(p_tname    in varchar2,                                       
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2018-11-13 15:12" pubdate>
+              2018-11-13
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/oracle/">oracle</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2018/11/13/%E4%BD%BF%E7%94%A8yumdownloader%E4%B8%8B%E8%BD%BDrpm%E5%8C%85/" target="_self">
+          使用yumdownloader下载rpm包
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2018/11/13/%E4%BD%BF%E7%94%A8yumdownloader%E4%B8%8B%E8%BD%BDrpm%E5%8C%85/" target="_self">
+          
+          
+            
+          
+          使用yumdownloader下载rpm包安装
+1yum -y install yum-utils*
+
+使用
+1yumdownloader --resolve python-six
+
+
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2018-11-13 15:10" pubdate>
+              2018-11-13
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/linux/">linux</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2018/11/13/Mongodb%E6%9D%83%E9%99%90%E6%A6%82%E5%BF%B5/" target="_self">
+          Mongodb权限概念
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2018/11/13/Mongodb%E6%9D%83%E9%99%90%E6%A6%82%E5%BF%B5/" target="_self">
+          
+          
+            
+          
+          
+转自HULK一线技术杂谈
+
+权限概念
+要想理解清楚MongoDB的权限必须先了解如下一些关键字
+user
+即用户，用于提供客户端连接MongoDB的认证账户
+role
+即角色，数据权限的集合，创建用户的时候必须要指定对应的角色，否则用户无法操作数据库
+resource
+即资源，包括database或collection也可以是database和collection的组合
+例如：
+1&#123; 
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2018-11-13 14:56" pubdate>
+              2018-11-13
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/mongodb/">mongodb</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2018/11/13/Mongodb-sharded-cluster-using-keyfile/" target="_self">
+          Mongodb sharded cluster using keyfile
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2018/11/13/Mongodb-sharded-cluster-using-keyfile/" target="_self">
+          
+          
+            
+          
+          官方文档Enforce Keyfile Access Control in Sharded Cluster
+坑
+按照官方文档无法成功。
+enableLocalhostAuthBypass这个参数已经不可用了，官方文档有写。
+一定要建立用户（本地、集群），开启keyfile默认开启鉴权，如果没有用户各种错误，而且链接不上。
+
+部署操作建立keyfile12openssl rand -base64 7
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2018-11-13 14:53" pubdate>
+              2018-11-13
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/mongodb/">mongodb</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2018/11/13/Oracle%E5%B9%B6%E5%8F%91%E6%9F%A5%E8%AF%A2%E5%8D%A0%E7%94%A8%E5%A4%A7%E9%87%8Fprocess%E6%95%B0%E6%8D%AE%E5%BA%93%E6%97%A0%E6%B3%95%E7%99%BB%E9%99%86/" target="_self">
+          Oracle并发查询占用大量process数据库无法登陆
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2018/11/13/Oracle%E5%B9%B6%E5%8F%91%E6%9F%A5%E8%AF%A2%E5%8D%A0%E7%94%A8%E5%A4%A7%E9%87%8Fprocess%E6%95%B0%E6%8D%AE%E5%BA%93%E6%97%A0%E6%B3%95%E7%99%BB%E9%99%86/" target="_self">
+          
+          
+            
+          
+          问题描述
+数据库无法登陆
+查看日志ORA-00020: maximum number of processes (300) exceeded
+ps -ef 查看发现大量p开头的session（p代表并行查询parallel）
+
+解决思路
+修改processes，需要重启不可行
+处理大量并发sql
+
+问题解决查找那些sid使用并行查询
+1select qcsid,count(*) from V$PX
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2018-11-13 14:51" pubdate>
+              2018-11-13
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/oracle/">oracle</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2018/11/13/Mongodb%E5%90%8C%E6%AD%A5%E6%85%A2%E5%88%86%E6%9E%90/" target="_self">
+          Mongodb同步慢分析
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2018/11/13/Mongodb%E5%90%8C%E6%AD%A5%E6%85%A2%E5%88%86%E6%9E%90/" target="_self">
+          
+          
+            
+          
+          转自：https://yq.aliyun.com/articles/47336?spm=5176.8091938.0.0.WPuhZ0
+问题背景最近生产环境出现多次Primary写入QPS太高，导致Seconary的同步无法跟上的问题（Secondary上的最新oplog时间戳比Primary上最旧oplog时间戳小），使得Secondary变成RECOVERING状态，这时需要人工介入处理，向S
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2018-11-13 14:49" pubdate>
+              2018-11-13
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/mongodb/">mongodb</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2018/11/13/Mongodb%E5%B9%82%E7%AD%89%E6%80%A7%E7%9A%84%E4%BB%A3%E4%BB%B7/" target="_self">
+          Mongodb幂等性的代价
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2018/11/13/Mongodb%E5%B9%82%E7%AD%89%E6%80%A7%E7%9A%84%E4%BB%A3%E4%BB%B7/" target="_self">
+          
+          
+            
+          
+          幂等性的代价MongoDB用于同步的oplog具有一个重要的『幂等』特性，也就是说，一条oplog在备上重放多次，得到的结果跟重放一次结果是一样的，这个特性简化了同步的实现，Secondary不需要有专门的逻辑去保证一条oplog在备上『必须仅能重放』一次。
+为了保证幂等性，记录oplog时，通常需要对写入的请求做一下转换，举个例子，某文档x字段当前值为100，用户向Primary发送一条{inc
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2018-11-13 14:46" pubdate>
+              2018-11-13
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/mongodb/">mongodb</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2018/11/13/Oracle%E5%A4%9A%E4%BB%BD%E8%B7%AF%E5%BE%84%E5%A4%87%E4%BB%BD/" target="_self">
+          Oracle多份路径备份
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2018/11/13/Oracle%E5%A4%9A%E4%BB%BD%E8%B7%AF%E5%BE%84%E5%A4%87%E4%BB%BD/" target="_self">
+          
+          
+            
+          
+          建立备份目录12cd /backupmkdir data rman logs arch
+
+配置rman1234rman target /CONFIGURE DATAFILE BACKUP COPIES FOR DEVICE TYPE DISK TO 2;CONFIGURE ARCHIVELOG BACKUP COPIES FOR DEVICE TYPE DISK TO 2;
+
+配置rman_bac
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2018-11-13 14:43" pubdate>
+              2018-11-13
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/oracle/">oracle</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+    <article class="col-12 col-md-12 mx-auto index-info">
+      <h1 class="index-header">
+        
+        <a href="/2018/11/13/MongoDB-Manage-Sharded-Cluster-Balancer/" target="_self">
+          MongoDB Manage Sharded Cluster Balancer
+        </a>
+      </h1>
+
+      <p class="index-excerpt">
+        <a href="/2018/11/13/MongoDB-Manage-Sharded-Cluster-Balancer/" target="_self">
+          
+          
+            
+          
+          https://docs.mongodb.org/manual/tutorial/manage-sharded-cluster-balancer/
+Check the Balancer StateThe following command checks if the balancer is enabled (i.e. that the balancer is allowed to run). Th
+        </a>
+      </p>
+
+      <div class="index-btm post-metas">
+        
+          <div class="post-meta mr-3">
+            <i class="iconfont icon-date"></i>
+            <time datetime="2018-11-13 14:33" pubdate>
+              2018-11-13
+            </time>
+          </div>
+        
+        
+        
+          <div class="post-meta">
+            <i class="iconfont icon-tags"></i>
+            
+              <a href="/tags/mongodb/">mongodb</a>
+            
+          </div>
+        
+      </div>
+    </article>
+  </div>
+
+
+
+  <nav aria-label="navigation">
+    <span class="pagination" id="pagination">
+      <a class="extend prev" rel="prev" href="/page/3/#board"><i class="iconfont icon-arrowleft"></i></a><a class="page-number" href="/">1</a><a class="page-number" href="/page/2/#board">2</a><a class="page-number" href="/page/3/#board">3</a><span class="page-number current">4</span><a class="page-number" href="/page/5/#board">5</a><a class="extend next" rel="next" href="/page/5/#board"><i class="iconfont icon-arrowright"></i></a>
+    </span>
+  </nav>
+
+
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    
+
+    
+      <a id="scroll-top-button" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">Search</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v"
+                 for="local-search-input">keyword</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    
+  </main>
+
+  <footer class="text-center mt-5 py-3">
+  <div class="footer-content">
+     <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+  </div>
+  
+
+  
+
+  
+</footer>
+
+
+  <!-- SCRIPTS -->
+  
+  <script  src="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nprogress@0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js" ></script>
+<script  src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+<!-- Plugins -->
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+  <script defer src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js" ></script>
+
+
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/typed.js@2.0.12/lib/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var title = document.getElementById('subtitle').title;
+      
+      typing(title)
+      
+    })(window, document);
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 主题的启动项 保持在最底部 -->
+<script  src="/js/boot.js" ></script>
+
+
+</body>
+</html>
